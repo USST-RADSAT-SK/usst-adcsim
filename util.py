@@ -17,7 +17,10 @@ def random_dcm():
 
 def cross_product_operator(vec):
     """
-    Takes in a vector and outputs its 'cross product operator'
+    Takes in a vector and outputs its 'cross product operator'.
+
+    See Part1/3_Directional-Cosine-Matrix-_DCM_.pdf page 14
+
     :param vec: any 3D vector
     :return: 3x3 cross product operator
     """

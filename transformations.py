@@ -14,7 +14,10 @@ import util as ut
 
 def prv_to_dcm(angle, unit_vector):
     """
-    This function generate the DCM corresponding to the input PRV coordinates
+    This function generates the DCM corresponding to the input PRV coordinates
+
+    Taken from Part1/5_Principal_rotation_vector_PRV.pdf page 58
+
     :param angle: PRV angle
     :param unit_vector: PRV unit vector
     :return: DCM
@@ -31,6 +34,9 @@ def prv_to_dcm(angle, unit_vector):
 def dcm_to_prv(dcm):
     """
     This function generates the PRV coordinates corresponding to the DCM input
+
+    Taken from Part1/5_Principal_rotation_vector_PRV.pdf page 58
+
     note: this function has a SINGULARITY
     :param dcm: DCM
     :return: PRV angle, PRV unit vector
@@ -43,6 +49,9 @@ def dcm_to_prv(dcm):
 def quaternions_to_dcm(b):
     """
     This function generates the DCM corresponding to the input quaternion coordinates
+
+    Taken from Part1/6_Euler-Parameters-_Quaternions_.pdf page 67
+
     :param b: quaternions
     :return: DCM
     """
@@ -52,9 +61,12 @@ def quaternions_to_dcm(b):
     return np.array(dcm)
 
 
-def dcm_to_quaternions(dcm):
+def dcm_to_quaternions_bad(dcm):
     """
     This function generates the quaternion coordinates corresponding to the DCM input
+
+    Taken from Part1/6_Euler-Parameters-_Quaternions_.pdf page 67
+
     note: this function has a SINGULARITY
     note: the positive value of b[0] represents the 'short angle rotation'
     :param dcm: DCM
@@ -65,11 +77,13 @@ def dcm_to_quaternions(dcm):
                      (dcm[0, 1] - dcm[1, 0]) / (4*b0)])
 
 
-def sheppards_method(dcm):
+def dcm_to_quaternions(dcm):
     """
     This function generates the quaternion coordinates corresponding to the DCm input.
 
     This is called sheppard's method, which does not contain a singularity like the 'common' way to do this.
+
+    See Part1/6_Euler-Parameters-_Quaternions_.pdf page 68
 
     :param dcm: DCM
     :return: quaternion coordinate vector
@@ -108,6 +122,9 @@ def sheppards_method(dcm):
 def crp_to_dcm(q):
     """
     This function generates the DCM coordinates corresponding to the DCM input
+
+    Taken from Part1/7_Classical-Rodrigues-Parameters-_CRP_.pdf page 82
+
     note: this function has a SINGULARITY
     :param q: CRP coordinate vector
     :return: DCM
@@ -119,6 +136,9 @@ def crp_to_dcm(q):
 def dcm_to_crp(dcm):
     """
     This function generates the CRP coordinates corresponding to the DCM input
+
+    Taken from Part1/7_Classical-Rodrigues-Parameters-_CRP_.pdf page 78
+
     note: this function has a SINGULARITY
     :param dcm: DCM
     :return: CRP coordinate vector
@@ -130,6 +150,9 @@ def dcm_to_crp(dcm):
 def mrp_to_dcm(sigma):
     """
     This function generates the MRP coordinates corresponding to the DCM input
+
+    Taken from Part1/8_Modified-Rodrigues-Parameters-_MRP_.pdf page 97
+
     :param sigma: MRP coordinate vector
     :return: DCM
     """
@@ -141,6 +164,9 @@ def mrp_to_dcm(sigma):
 def dcm_to_mrp(dcm):
     """
     This function generates the DCM coordinates corresponding to the MRP input
+
+    Taken from Part1/8_Modified-Rodrigues-Parameters-_MRP_.pdf page 92
+
     :param dcm: DCM
     :return: MRP coordinate vector
     """
