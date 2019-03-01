@@ -9,7 +9,7 @@ MRP = Modified Rodriques Parameters     (The "cool" new attitude coordinates)
 
 """
 import numpy as np
-from util import cross_product_operator
+import util as ut
 
 
 def prv_to_dcm(angle, unit_vector):
@@ -113,7 +113,7 @@ def crp_to_dcm(q):
     :return: DCM
     """
     s = q @ q
-    return (1/(1 + s))*((1 - s)*np.identity(3) + 2*np.outer(q, q) - 2*cross_product_operator(q))
+    return (1/(1 + s))*((1 - s)*np.identity(3) + 2*np.outer(q, q) - 2*ut.cross_product_operator(q))
 
 
 def dcm_to_crp(dcm):
@@ -133,7 +133,7 @@ def mrp_to_dcm(sigma):
     :param sigma: MRP coordinate vector
     :return: DCM
     """
-    sigma_cross = cross_product_operator(sigma)
+    sigma_cross = ut.cross_product_operator(sigma)
     s = sigma @ sigma
     return np.identity(3) + (8*(sigma_cross @ sigma_cross) - 4*(1 - s)*sigma_cross)/(1 + s)**2
 

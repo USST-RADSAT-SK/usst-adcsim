@@ -11,7 +11,7 @@ def random_dcm():
     """
     e = 2*np.random.random(3) - 1
     e = e/np.linalg.norm(e)  # random unit vector
-    r = 2*np.pi*np.random.random() - np.pi  # random angle between -180 and 180 (0 to 180 would also be fine?)
+    r = np.pi*np.random.random()  # random angle between 0 and 180 (-180 to 180 would also be fine?)
     return tr.prv_to_dcm(r, e)
 
 
