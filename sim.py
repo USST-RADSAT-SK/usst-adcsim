@@ -6,10 +6,12 @@ import transformations as tr
 
 # declare the bodies inertia, initial attitude, initial angular velocity, and control torque constants
 inertia = np.diag([140, 100, 80])
-omega0 = np.array([0.1, 0.01, -0.05])
+omega0 = np.array([0.7, 0.2, -0.15])
 sigma0 = np.array([0.60, -0.4, 0.2])
 K = 7.11
-P = np.array([16.7, 6.7, 15.67])
+P = np.array([18.67, 2.67, 10.67])
+# add ability to specific max torque in each direction
+max_torque = 1
 
 
 # equation name: Euler's rotational equation of motion
@@ -33,7 +35,7 @@ def control_torque(sigma, omega):
 
 # The integration (with Euler's method)
 time_step = 0.01
-time = np.arange(0, 150, time_step)
+time = np.arange(0, 300, time_step)
 sigmas = np.zeros((len(time), 3))
 omegas = np.zeros((len(time), 3))
 controls = np.zeros((len(time), 3))
@@ -42,8 +44,15 @@ omegas[0] = omega0
 for i in range(len(time) - 1):
     # note: comment out the next line to run the simulation in the absence of control torques
     controls[i] = control_torque(sigmas[i], omegas[i])
+
+    # if the torque is greater than the max torque, then truncate it to the max torque (along each axis)
+    controls[i][abs(controls[i]) > max_torque] = max_torque*np.sign(controls[i])[abs(controls[i]) > max_torque]
+
     omegas[i+1] = omegas[i] + time_step*omega_dot(omegas[i], controls[i])
     sigmas[i+1] = sigmas[i] + time_step*sigma_dot(sigmas[i], omegas[i])
+    # switch mrp's if needed
+    if np.linalg.norm(sigmas[i+1]) > 1:
+        sigmas[i+1] = -sigmas[i+1]
 
 
 # function to dry up plots
@@ -74,4 +83,14 @@ _title('prv angle', 'prv angle (rad)')
 plt.figure()
 plt.plot(time, e)
 _title('prv unit vector', 'prv unit vector components')
+
+# plot the control torque
+plt.figure()
+plt.plot(time, controls)
+_title('control torque components', 'Torque (Nm)')
+
+# plot the mrp magnitude
+plt.figure()
+plt.plot(time, np.linalg.norm(sigmas, axis=1))
+_title('mrp magnitude', '')
 plt.show()
