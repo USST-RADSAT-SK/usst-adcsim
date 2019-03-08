@@ -149,7 +149,7 @@ def dcm_to_crp(dcm):
 
 def mrp_to_dcm(sigma):
     """
-    This function generates the MRP coordinates corresponding to the DCM input
+    This function generates the DCM coordinates corresponding to the MRP input
 
     Taken from Part1/8_Modified-Rodrigues-Parameters-_MRP_.pdf page 97
 
@@ -163,7 +163,7 @@ def mrp_to_dcm(sigma):
 
 def dcm_to_mrp(dcm):
     """
-    This function generates the DCM coordinates corresponding to the MRP input
+    This function generates the MRP coordinates corresponding to the DCM input
 
     Taken from Part1/8_Modified-Rodrigues-Parameters-_MRP_.pdf page 92
 
@@ -172,3 +172,30 @@ def dcm_to_mrp(dcm):
     """
     c = np.sqrt(np.trace(dcm) + 1)
     return (1/(c*(c + 2))) * np.array([dcm[1, 2] - dcm[2, 1], dcm[2, 0] - dcm[0, 2], dcm[0, 1] - dcm[1, 0]])
+
+
+def euler_angles_to_dcm(vec, type='3-2-1'):
+    """
+    This function generates the DCM coordinates corresponding to the euler angles of the specified type.
+
+
+    :param vec: euler angles
+    :param type: type of euler angle rotation (e.g. '3-2-1', '3-1-3', etc.). 12 total types
+    :return: DCM
+    """
+    def m(angle, num):
+        if num == 3:
+            return np.array([[np.cos(angle), np.sin(angle), 0], [-np.sin(angle), np.cos(angle), 0], [0, 0, 1]])
+        if num == 2:
+            return np.array([[np.cos(angle), 0, -np.sin(angle)], [0, 1, 0], [np.sin(angle), 0, np.cos(angle)]])
+        if num == 1:
+            return np.array([[1, 0, 0], [0, np.cos(angle), np.sin(angle)], [0, -np.sin(angle), np.cos(angle)]])
+
+    parse = np.array([int(i) for i in type.split('-')])
+
+    matrices = np.zeros((3, 3, 3))
+    for i, da in enumerate(parse):
+        matrices[i] = m(vec[i], da)
+
+    return matrices[2] @ matrices[1] @ matrices[0]
+
