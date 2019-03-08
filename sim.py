@@ -2,7 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import util as ut
 import transformations as tr
+import determination as dt
 
+
+# sun and magnetic field vectors in the inertial frame
+sn = np.array([1, 0, 0])
+mn = np.array([0, 0, 1])
 
 # declare the bodies inertia, initial attitude, initial angular velocity, and control torque constants
 inertia = np.diag([140, 100, 80])
@@ -44,8 +49,20 @@ controls = np.zeros((len(time), 3))
 sigmas[0] = sigma0
 omegas[0] = omega0
 for i in range(len(time) - 1):
+    # find sun and magnetic field body vectors
+    dcm_real = tr.mrp_to_dcm(sigmas[i])
+    sb_real = dcm_real @ sn.T
+    mb_real = dcm_real @ mn.T
+    # add noise to body frame vectors
+    sb_noisy = sb_real + np.random.random_sample(len(sb_real)) * 0.1
+    mb_noisy = mb_real + np.random.random_sample(len(mb_real)) * 0.1
+
+    dcm_triad = dt.TRIAD([sn, mn], [sb_noisy, mb_noisy])
+    sigma_control = tr.dcm_to_mrp(dcm_triad)
+
     # note: comment out the next line to run the simulation in the absence of control torques
-    controls[i] = control_torque(sigmas[i], omegas[i])
+    # controls[i] = control_torque(sigmas[i], omegas[i])
+    controls[i] = control_torque(sigma_control, omegas[i])
 
     # if the torque is greater than the max torque, then truncate it to the max torque (along each axis)
     # controls[i][abs(controls[i]) > max_torque] = max_torque*np.sign(controls[i])[abs(controls[i]) > max_torque]
