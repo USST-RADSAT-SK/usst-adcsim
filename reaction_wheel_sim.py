@@ -21,7 +21,7 @@ max_torque = None
 
 
 # create reference frame
-v = np.array([1, 0.5, 0.1])  # create a vector that represents euler angle rotation
+v = np.array([0.5, 0.5, 0.1])  # create a vector that represents euler angle rotation
 dcm_rn = tr.euler_angles_to_dcm(v, type='3-2-1')  # find dcm corresponding to euler angle rotation
 
 
@@ -44,7 +44,6 @@ inertia_rw[2, 2] += reaction_wheel_inertia[2]
 inertia_inv_rw = np.linalg.inv(inertia_rw)
 
 
-
 # The integration
 time_step = 0.01
 end_time = 300
@@ -54,9 +53,11 @@ controls = np.zeros((len(time), 3))
 states[0] = [sigma0, omega0]
 wheel_angular_vel = np.zeros((len(time), 3))  # initial condition for wheels
 wheel_angular_accel = np.zeros((len(time), 3))  # initial condition for wheels
+dcm = np.zeros((len(time), 3, 3))
+dcm[0] = tr.mrp_to_dcm(states[0][0])
 for i in range(len(time) - 1):
     # do attitude determination
-    sigma_estimated = ae.mrp_triad_with_noise(states[i][0], sun_vec, mag_vec, 0.1, 0.1)
+    sigma_estimated = ae.mrp_triad_with_noise(states[i][0], sun_vec, mag_vec, 0.01, 0.01)
 
     # get reference frame
     sigma_br = rf.get_mrp_br(dcm_rn, sigma_estimated)  # note: angular velocities need to be added to reference frame
@@ -76,6 +77,7 @@ for i in range(len(time) - 1):
 
     # do 'tidy' up things at the end of integration (needed for many types of attitude coordinates)
     states[i+1] = ic.mrp_switching(states[i+1])
+    dcm[i+1] = tr.mrp_to_dcm(states[i+1][0])
 
 
 if __name__ == "__main__":
@@ -91,8 +93,8 @@ if __name__ == "__main__":
         plt.ylabel(ylabel)
 
 
-    _plot(omegas, 'angular velocity components', 'angular velocity (rad/s)')
-    _plot(sigmas, 'mrp components', 'mrp component values')
+    # _plot(omegas, 'angular velocity components', 'angular velocity (rad/s)')
+    # _plot(sigmas, 'mrp components', 'mrp component values')
 
     # get prv's
     def get_prvs(data):
@@ -103,21 +105,25 @@ if __name__ == "__main__":
         return angle, e
 
 
-    angle, e = get_prvs(sigmas)
+    # angle, e = get_prvs(sigmas)
 
     # The prv's are obtained and plotted here because they are an intuitive attitude coordinate system
     # and the prv angle as a function of time is the best way to visualize your attitude error.
-    _plot(angle, 'prv angle reference', 'prv angle (rad)')
+    # _plot(angle, 'prv angle reference', 'prv angle (rad)')
 
     # plot the control torque
-    _plot(controls, 'control torque components', 'Torque (Nm)')
+    # _plot(controls, 'control torque components', 'Torque (Nm)')
 
     # plot the mrp magnitude
-    _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
+    # _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
 
     # plot wheel speed and accelerations
-    _plot(wheel_angular_vel*9.5493, 'reaction wheel angular velocities', 'rpm')
-    _plot(wheel_angular_accel, 'reaction wheel angular accelerations', 'rad/s/s')
+    # _plot(wheel_angular_vel*9.5493, 'reaction wheel angular velocities', 'rpm')
+    # _plot(wheel_angular_accel, 'reaction wheel angular accelerations', 'rad/s/s')
 
+    from animation import animate_attitude, animate_wheel_angular_velocity
+
+    # animate_attitude(dcm[::10], dcm_rn)
+    # animate_wheel_angular_velocity(time[::10], wheel_angular_vel[::10])
 
     plt.show()
