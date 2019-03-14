@@ -20,11 +20,6 @@ P = np.array([18.67, 20.67, 10.67])
 max_torque = None
 
 
-# create reference frame
-v = np.array([0.5, 0.5, 0.1])  # create a vector that represents euler angle rotation
-dcm_rn = tr.euler_angles_to_dcm(v, type='3-2-1')  # find dcm corresponding to euler angle rotation
-np.save('dcm_rn.npy', dcm_rn)
-
 # create inertial sun and magnetic field vectors for attitude determination
 sun_vec = np.random.random(3)
 sun_vec = sun_vec/np.linalg.norm(sun_vec)
@@ -36,34 +31,46 @@ mag_vec = mag_vec/np.linalg.norm(mag_vec)
 time_step = 0.01
 end_time = 300
 time = np.arange(0, end_time, time_step)
-states = np.zeros((len(time), 2, 3))
+states_br = np.zeros((len(time), 2, 3))
 controls = np.zeros((len(time), 3))
-states[0] = [sigma0, omega0]
-dcm = np.zeros((len(time), 3, 3))
-dcm[0] = tr.mrp_to_dcm(states[0][0])
+states_br[0] = [sigma0, omega0]
+dcm_br = np.zeros((len(time), 3, 3))
+dcm_br[0] = tr.mrp_to_dcm(states_br[0][0])
 for i in range(len(time) - 1):
-    # do attitude determination
-    sigma_estimated = ae.mrp_triad_with_noise(states[i][0], sun_vec, mag_vec, 0.01, 0.01)
+    # do attitude determination (this needs to change now that the state is defined in the reference frame)
+    # sigma_estimated = ae.mrp_triad_with_noise(states_br[i][0], sun_vec, mag_vec, 0.01, 0.01)
+    # sigma_estimated = ae.mrp_triad_with_noise(states_br[i][0], sun_vec, mag_vec, 0.0, 0.0)
+    # sigma_estimated = states_br[i][0]
 
-    # get reference frame
-    sigma_br = rf.get_mrp_br(dcm_rn, sigma_estimated)  # note: angular velocities need to be added to reference frame
+    # get reference frame velocities
+    omega_r = dcm_br[i] @ rf.get_omega_r(time[i])  # convert from reference frame to body frame
+    omega_dot_r = dcm_br[i] @ rf.get_omega_r_dot(time[i])  # convert from reference frame to body frame
+    # next step: numerically approximate these from reference frame position wrt time?
 
     # get control torques
-    controls[i] = cl.control_torque(sigma_br, states[i][1], inertia, K, P, i, controls[i-1], max_torque=max_torque)
+    controls[i] = cl.control_torque(states_br[i][0], states_br[i][1], omega_r, omega_dot_r, inertia, K, P, i, controls[i - 1], max_torque=max_torque)
 
     # propagate attitude state
-    states[i+1] = it.rk4(st.state_dot, time_step, states[i], controls[i], inertia, inertia_inv)
+    states_br[i + 1] = it.rk4(st.state_dot, time_step, states_br[i], controls[i], omega_r, inertia, inertia_inv)
 
     # do 'tidy' up things at the end of integration (needed for many types of attitude coordinates)
-    states[i+1] = ic.mrp_switching(states[i+1])
-    dcm[i+1] = tr.mrp_to_dcm(states[i+1][0])
+    states_br[i + 1] = ic.mrp_switching(states_br[i + 1])
+    dcm_br[i + 1] = tr.mrp_to_dcm(states_br[i + 1][0])
 
 
 if __name__ == "__main__":
-    np.save('dcm_array.npy', dcm)
-    omegas = states[:, 1]
-    sigmas = states[:, 0]
+    np.save('dcm_array.npy', dcm_br)
 
+    sigma_bn = np.zeros((len(time), 3))
+    sigma_rn = np.zeros((len(time), 3))
+    dcm_bn = np.zeros((len(time), 3, 3))
+    dcm_rn = np.zeros((len(time), 3, 3))
+    for i in range(len(time)):
+        sigma_br = states_br[i][0]
+        dcm_rn[i] = rf.get_dcm_rn(time[i])
+        dcm_bn[i] = dcm_br[i] @ dcm_rn[i]
+        sigma_bn[i] = tr.dcm_to_mrp(dcm_bn[i])
+        sigma_rn[i] = tr.dcm_to_mrp(dcm_rn[i])
 
     def _plot(data, title, ylabel):
         plt.figure()
@@ -76,6 +83,18 @@ if __name__ == "__main__":
     # _plot(omegas, 'angular velocity components', 'angular velocity (rad/s)')
     # _plot(sigmas, 'mrp components', 'mrp component values')
 
+    # plt.plot(time, sigma_bn[:, 0], 'C0', label='body frame')
+    # plt.plot(time, sigma_bn[:, 1], 'C1')
+    # plt.plot(time, sigma_bn[:, 2], 'C2')
+    # plt.plot(time, sigma_rn[:, 0], 'C0--', label='body frame')
+    # plt.plot(time, sigma_rn[:, 1], 'C1--')
+    # plt.plot(time, sigma_rn[:, 2], 'C2--')
+    # plt.title('body and reference frame mrp components ')
+    # plt.xlabel('Time (s)')
+    # plt.ylabel('mrp component values')
+    # plt.show()
+    # exit()
+
     # get prv's
     def get_prvs(data):
         angle = np.zeros(len(time))
@@ -83,7 +102,6 @@ if __name__ == "__main__":
         for i in range(len(time)):
             angle[i], e[i] = tr.dcm_to_prv(tr.mrp_to_dcm(data[i]))
         return angle, e
-
 
     # angle, e = get_prvs(sigmas)
 
@@ -99,6 +117,6 @@ if __name__ == "__main__":
 
     from animation import animate_attitude
 
-    animate_attitude(dcm[::10], dcm_rn)
+    animate_attitude(dcm_bn[::100], dcm_rn[::100])
 
     plt.show()

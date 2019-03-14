@@ -45,9 +45,9 @@ def animate_attitude(dcm, dcm_reference):
         ax.quiver(0, 0, 0, dcm[i][0, 1], dcm[i][1, 1], dcm[i][2, 1], length=4)
         ax.quiver(0, 0, 0, dcm[i][0, 2], dcm[i][1, 2], dcm[i][2, 2], length=4)
 
-        ax.quiver(0, 0, 0, dcm_reference[0, 0], dcm_reference[1, 0], dcm_reference[2, 0], length=4, color='r')
-        ax.quiver(0, 0, 0, dcm_reference[0, 1], dcm_reference[1, 1], dcm_reference[2, 1], length=4, color='r')
-        ax.quiver(0, 0, 0, dcm_reference[0, 2], dcm_reference[1, 2], dcm_reference[2, 2], length=4, color='r')
+        ax.quiver(0, 0, 0, dcm_reference[i][0, 0], dcm_reference[i][1, 0], dcm_reference[i][2, 0], length=4, color='r')
+        ax.quiver(0, 0, 0, dcm_reference[i][0, 1], dcm_reference[i][1, 1], dcm_reference[i][2, 1], length=4, color='r')
+        ax.quiver(0, 0, 0, dcm_reference[i][0, 2], dcm_reference[i][1, 2], dcm_reference[i][2, 2], length=4, color='r')
 
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
