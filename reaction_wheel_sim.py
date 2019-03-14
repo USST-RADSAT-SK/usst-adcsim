@@ -121,9 +121,14 @@ if __name__ == "__main__":
     # _plot(wheel_angular_vel*9.5493, 'reaction wheel angular velocities', 'rpm')
     # _plot(wheel_angular_accel, 'reaction wheel angular accelerations', 'rad/s/s')
 
-    from animation import animate_attitude, animate_wheel_angular_velocity
+    from animation import animate_attitude, animate_wheel_angular_velocity, combination
 
     # animate_attitude(dcm[::10], dcm_rn)
     # animate_wheel_angular_velocity(time[::10], wheel_angular_vel[::10])
+
+    # animate_attitude(dcm[::10], dcm_rn)
+    # animate_wheel_angular_velocity(time[::10], wheel_angular_vel[::10])
+
+    combination(time[::50], wheel_angular_vel[::50], dcm[::50], dcm_rn)
 
     plt.show()
