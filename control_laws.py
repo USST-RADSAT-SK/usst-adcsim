@@ -33,3 +33,18 @@ def reaction_wheel_control(sigma, omega, inertia_rw, K, P, i, prev_torque, hs, m
         val[abs(val) > max_torque] = max_torque * np.sign(val)[abs(val) > max_torque]
 
     return val
+
+
+def b_dot(B, Bprev, K, i, prev_m, time_diff_measurements):
+
+    if i % 100 != 0:
+        return prev_m
+
+    Bdot = (B - Bprev)/time_diff_measurements
+
+    m = -K * Bdot
+
+    max_m = 0.3
+    m[abs(m) > max_m] = max_m * np.sign(m)[abs(m) > max_m]
+
+    return m  # this is the given control torque from the m calculated by the control law

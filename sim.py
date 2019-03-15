@@ -11,19 +11,18 @@ import attitude_estimations as ae
 
 # declare the bodies inertia, initial attitude, initial angular velocity, control torque constants, and max torque
 # limitation
-inertia = np.diag([140, 100, 80])
+inertia = np.diag([2*(10**-3), 8*(10**-3), 8*(10**-3)])
 inertia_inv = np.linalg.inv(inertia)
 omega0 = np.array([0.7, 0.2, -0.15])
 sigma0 = np.array([0.60, -0.4, 0.2])
-K = 7.11
-P = np.array([18.67, 20.67, 10.67])
+K = 7.11 * (10**-5)
+P = np.array([18.67, 20.67, 30.67])*(10**-5)
 max_torque = None
 
 
 # create reference frame
 v = np.array([0.5, 0.5, 0.1])  # create a vector that represents euler angle rotation
 dcm_rn = tr.euler_angles_to_dcm(v, type='3-2-1')  # find dcm corresponding to euler angle rotation
-np.save('dcm_rn.npy', dcm_rn)
 
 # create inertial sun and magnetic field vectors for attitude determination
 sun_vec = np.random.random(3)
@@ -60,7 +59,6 @@ for i in range(len(time) - 1):
 
 
 if __name__ == "__main__":
-    np.save('dcm_array.npy', dcm)
     omegas = states[:, 1]
     sigmas = states[:, 0]
 
@@ -73,8 +71,8 @@ if __name__ == "__main__":
         plt.ylabel(ylabel)
 
 
-    # _plot(omegas, 'angular velocity components', 'angular velocity (rad/s)')
-    # _plot(sigmas, 'mrp components', 'mrp component values')
+    _plot(omegas, 'angular velocity components', 'angular velocity (rad/s)')
+    _plot(sigmas, 'mrp components', 'mrp component values')
 
     # get prv's
     def get_prvs(data):
@@ -85,20 +83,20 @@ if __name__ == "__main__":
         return angle, e
 
 
-    # angle, e = get_prvs(sigmas)
+    angle, e = get_prvs(sigmas)
 
     # The prv's are obtained and plotted here because they are an intuitive attitude coordinate system
     # and the prv angle as a function of time is the best way to visualize your attitude error.
-    # _plot(angle, 'prv angle reference', 'prv angle (rad)')
+    _plot(angle, 'prv angle reference', 'prv angle (rad)')
 
     # plot the control torque
-    # _plot(controls, 'control torque components', 'Torque (Nm)')
+    _plot(controls, 'control torque components', 'Torque (Nm)')
 
     # plot the mrp magnitude
-    # _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
+    _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
 
-    from animation import animate_attitude, animate_wheel_angular_velocity
+    from animation import animate_attitude
 
-    animate_attitude(dcm[::15], dcm_rn)
+    animate_attitude(dcm[::100], dcm_rn)
 
     plt.show()
