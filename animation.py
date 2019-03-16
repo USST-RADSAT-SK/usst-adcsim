@@ -23,6 +23,16 @@ def animate_attitude(dcm, dcm_reference=None, vec=None):
             return b
         return b[i]
 
+    if dcm_reference is not None and len(dcm_reference) > 3:
+        changing_ref = True
+    else:
+        changing_ref = False
+
+    def get_dcm_ref(b, i):
+        if not changing_ref:
+            return b
+        return b[i]
+
     fig = plt.figure()
 
     for i in range(len(dcm)):
@@ -56,9 +66,10 @@ def animate_attitude(dcm, dcm_reference=None, vec=None):
         ax.quiver(0, 0, 0, dcm[i][0, 2], dcm[i][1, 2], dcm[i][2, 2], length=4)
 
         if dcm_reference is not None:
-            ax.quiver(0, 0, 0, dcm_reference[0, 0], dcm_reference[0, 1], dcm_reference[0, 2], length=4, color='r')
-            ax.quiver(0, 0, 0, dcm_reference[1, 0], dcm_reference[1, 1], dcm_reference[1, 2], length=4, color='r')
-            ax.quiver(0, 0, 0, dcm_reference[2, 0], dcm_reference[2, 1], dcm_reference[2, 2], length=4, color='r')
+            de = get_dcm_ref(dcm_reference, i)
+            ax.quiver(0, 0, 0, de[0, 0], de[0, 1], de[0, 2], length=4, color='r')
+            ax.quiver(0, 0, 0, de[1, 0], de[1, 1], de[1, 2], length=4, color='r')
+            ax.quiver(0, 0, 0, de[2, 0], de[2, 1], de[2, 2], length=4, color='r')
 
         if vec is not None:
             ve = get_vec(vec, i)
