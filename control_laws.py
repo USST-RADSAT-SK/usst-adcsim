@@ -64,4 +64,4 @@ def b_dot(B, Bprev, K, i, prev_m, time_diff_measurements):
     max_m = 0.3
     m[abs(m) > max_m] = max_m * np.sign(m)[abs(m) > max_m]
 
-    return m  # this is the given control torque from the m calculated by the control law
+    return m  # this is not a control torque, its a magnetic moment
