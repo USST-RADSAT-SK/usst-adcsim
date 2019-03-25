@@ -1,6 +1,7 @@
 import numpy as np
 import transformations as tr
 
+
 def random_dcm():
     """
     This function generates a random DCM.
@@ -41,6 +42,27 @@ def align_z_to_nadir(pos_vec):
     t2 = t2 / np.linalg.norm(t2)
     t3 = cross_product_operator(t1) @ t2
     return np.array([t2, t3, t1])
+
+
+def initial_align_gravity_stabilization(pos_vec, vel_vec):
+    # this function takes a position and velocity vector and outputs the DCM that represents the translation from the
+    # inertial frame to the body frame, such that the body frames z-axis aligns with the position vector and the
+    # body frames y-axis aligns with the cross track (i.e. the direction perpendicular to nadir and the velocity track)
+    p = pos_vec
+    p = p / np.linalg.norm(p)
+
+    v = vel_vec
+    v = v / np.linalg.norm(v)
+
+    t1 = cross_product_operator(p) @ v
+
+    t1 = t1/np.linalg.norm(t1)
+
+    v_corrected = cross_product_operator(t1) @ p
+
+    dcm = np.array([v_corrected, t1, p])
+
+    return dcm
 
 
 def gstime(jdut1):

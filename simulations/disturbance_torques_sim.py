@@ -9,12 +9,12 @@ import util as ut
 from skyfield.api import load, EarthSatellite
 
 time_step = 10
-end_time = 50000
+end_time = 100000
 time = np.arange(0, end_time, time_step)
 
 # declare the bodies inertia, initial attitude, initial angular velocity, control torque constants, and max torque
 # limitation
-inertia = np.diag([5*(10**-1), 5*(10**-1), 2*(10**-5)])
+inertia = np.diag([2*(10**-2), 4*(10**-2), 5*(10**-3)])
 inertia_inv = np.linalg.inv(inertia)
 omega0 = np.array([0, 0, 0])
 sigma0 = np.array([0, 0, 0])
@@ -43,8 +43,11 @@ lats[0] = subpoint.latitude.radians * 180 / np.pi
 alts[0] = subpoint.elevation.m
 
 # initialize attitude so that z direction of body frame is aligned with nadir
-dcm0 = ut.align_z_to_nadir(positions[0])
+dcm0 = ut.initial_align_gravity_stabilization(positions[0], velocities[0])
 sigma0 = tr.dcm_to_mrp(dcm0)
+# initialize angular velocity so that it is approximately the speed of rotation around the earth
+omega0_body = np.array([0, -0.00113, 0])
+omega0 = dcm0.T @ omega0_body
 
 # The integration
 states = np.zeros((len(time), 2, 3))
@@ -129,7 +132,7 @@ if __name__ == "__main__":
 
     from animation import animate_attitude_and_ground_track
 
-    num = 20
+    num = 10
     animate_attitude_and_ground_track(dcm[::num], lats[::num], lons[::num], vec=nadir[::num])
 
     plt.figure()
