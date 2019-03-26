@@ -23,8 +23,10 @@ def get_dcm_rn(t):
     # dcm_rn[:, 0], dcm_rn[:, 1] = c * dcm_rn[:, 0] + s * dcm_rn[:, 1], -s * dcm_rn[:, 0] + c * dcm_rn[:, 1]
     # return dcm_rn
 
+
 def get_omega_r(t):
     return np.array([0., 0., -np.pi / 180.])
+
 
 def get_omega_r_dot(t):
     return np.array([0., 0., 0.])
