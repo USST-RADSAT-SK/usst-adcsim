@@ -95,8 +95,9 @@ if __name__ == "__main__":
     # plot the mrp magnitude
     _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
 
-    from animation import animate_attitude
+    from animation import AnimateAttitude
 
-    animate_attitude(dcm[::100], dcm_rn)
+    a = AnimateAttitude(dcm[::100], dcm_rn)
+    a.animate()
 
     plt.show()

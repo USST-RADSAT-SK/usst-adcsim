@@ -135,10 +135,11 @@ if __name__ == "__main__":
     _plot(wheel_angular_accel, 'reaction wheel angular accelerations', 'rad/s/s')
     _plot(m, 'coil magnetic moments', '(A*m^2)')
 
-    from animation import animate_attitude_and_2_plots
-
-    animate_attitude_and_2_plots(time[::200], wheel_angular_vel[::200]*9.5493, m[::200], dcm[::200],
-                                 title1='Reaction Wheel Angular Velocities', ylabel1='rpm',
-                                 title2='Magnetic moment', ylabel2='A*m^2')
+    from animation import AnimateAttitude
+    num = 200
+    a = AnimateAttitude(dcm[::num])
+    a.animate_and_2_plots(time[::num], wheel_angular_vel[::num]*9.5493, time[::num], m[::num],
+                          title1='Reaction Wheel Angular Velocities', ylabel1='rpm', title2='Magnetic moment',
+                          ylabel2='A*m^2')
 
     plt.show()

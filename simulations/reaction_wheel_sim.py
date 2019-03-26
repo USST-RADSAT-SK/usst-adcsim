@@ -127,9 +127,10 @@ if __name__ == "__main__":
     _plot(wheel_angular_vel*9.5493, 'reaction wheel angular velocities', 'rpm')
     _plot(wheel_angular_accel, 'reaction wheel angular accelerations', 'rad/s/s')
 
-    from animation import animate_attitude_and_plot
-
-    animate_attitude_and_plot(time[::200], wheel_angular_vel[::200]*9.5493, dcm[::200], dcm_rn,
-                              title='Reaction Wheel Angular Velocities', ylabel='rpm')
+    from animation import AnimateAttitude
+    num = 200
+    a = AnimateAttitude(dcm[::num], dcm_rn)
+    a.animate_and_plot(time[::num], wheel_angular_vel[::num]*9.5493, title='Reaction Wheel Angular Velocities',
+                       ylabel='rpm')
 
     plt.show()

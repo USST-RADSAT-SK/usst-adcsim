@@ -32,7 +32,7 @@ m = np.zeros((len(time), 3))
 
 
 # create magnetic field vector
-mag_vec_def = np.load('magfields.npy')[:400]
+mag_vec_def = np.load('C:/Users/CurtisDesktop/PycharmProjects/U-of-Colorado_course/magfields.npy')[:400]
 xp = np.arange(0, end_time, 10)
 mag_vec_magnitude = 50 * (10**-6)
 
@@ -74,8 +74,9 @@ if __name__ == "__main__":
     _plot(controls, 'control torque components', 'Torque (Nm)')
     _plot(m, 'coil magnetic moments', '(A*m^2)')
 
-    from animation import animate_attitude_and_plot
-    animate_attitude_and_plot(time[::200], m[::200], dcm[::200], vec=mag_vec[::200], title='Magnetic moment',
-                              ylabel='A*m^2')
+    from animation import AnimateAttitude
+    num = 200
+    a = AnimateAttitude(dcm[::num], draw_vector=mag_vec[::num])
+    a.animate_and_plot(time[::num], m[::num], 'Magnetic moment', 'A*m^2', draw_vec_type='double')
 
     plt.show()

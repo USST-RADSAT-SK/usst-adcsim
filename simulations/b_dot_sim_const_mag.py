@@ -69,8 +69,10 @@ if __name__ == "__main__":
     _plot(controls, 'control torque components', 'Torque (Nm)')
     _plot(m, 'coil magnetic moments', '(A*m^2)')
 
-    from animation import animate_attitude_and_plot
-    animate_attitude_and_plot(time[::200], m[::200], dcm[::200], vec=mag_vec_def, title='Magnetic moment',
-                              ylabel='A*m^2')
+    from animation import AnimateAttitude
+    num = 200
+    a = AnimateAttitude(dcm[::num], draw_vector=mag_vec_def)
+    a.animate_and_plot(time[::num], m[::num], 'Magnetic moment', 'A*m^2', draw_vec_type='double')
+
 
     plt.show()
