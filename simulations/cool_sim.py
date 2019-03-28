@@ -50,6 +50,7 @@ if __name__ == "__main__":
     #_plot(omegas, 'angular velocity components', 'angular velocity (rad/s)')
     #_plot(sigmas, 'mrp components', 'mrp component values')
 
+
     # get prv's
     def get_prvs(data):
         angle = np.zeros(len(time))
@@ -71,10 +72,11 @@ if __name__ == "__main__":
     # plot the mrp magnitude
     # _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
 
-    from animation import AnimateAttitude
-
+    from animation import AnimateAttitude, DrawingVectors, AdditionalPlots
     num = 20
-    a = AnimateAttitude(dcm[::num])
-    a.animate_and_plot(time[::num], omegas[::num], 'angular vel', 'Rad/s')
+    body = DrawingVectors(dcm[::num], 'axes', ['C0', 'C1', 'C2'], ['Body x', 'Body y', 'Body z'], 4)
+    plot1 = AdditionalPlots(time[::num], omegas[::num], title='Angular Velocity', ylabel='Rad/s')
+    a = AnimateAttitude(dcm[::num], draw_vector=body, additional_plots=plot1)
+    a.animate_and_plot()
 
     plt.show()

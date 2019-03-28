@@ -32,7 +32,7 @@ m = np.zeros((len(time), 3))
 
 
 # create magnetic field vector
-mag_vec_def = np.load('C:/Users/CurtisDesktop/PycharmProjects/U-of-Colorado_course/magfields.npy')[:400]
+mag_vec_def = np.load('C:/Users/cmp310/PycharmProjects/U-of-Colorado_course/magfields.npy')[:400]
 xp = np.arange(0, end_time, 10)
 mag_vec_magnitude = 50 * (10**-6)
 
@@ -74,9 +74,13 @@ if __name__ == "__main__":
     _plot(controls, 'control torque components', 'Torque (Nm)')
     _plot(m, 'coil magnetic moments', '(A*m^2)')
 
-    from animation import AnimateAttitude
+    from animation import AnimateAttitude, DrawingVectors, AdditionalPlots
     num = 200
-    a = AnimateAttitude(dcm[::num], draw_vector=mag_vec[::num])
-    a.animate_and_plot(time[::num], m[::num], 'Magnetic moment', 'A*m^2', draw_vec_type='double')
+    vec = DrawingVectors(mag_vec[::num], 'double', 'r', 'B-field', 6)
+    body = DrawingVectors(dcm[::num], 'axes', ['C0', 'C1', 'C2'], ['Body x', 'Body y', 'Body z'], 4)
+    plot1 = AdditionalPlots(time[::num], m[::num], title='Magnetic moment', ylabel='A*m^2')
+    plot2 = AdditionalPlots(time[::num], mag[::num], title='body frame B-field', ylabel='T')
+    a = AnimateAttitude(dcm[::num], draw_vector=[vec, body], additional_plots=[plot1, plot2])
+    a.animate_and_plot()
 
     plt.show()

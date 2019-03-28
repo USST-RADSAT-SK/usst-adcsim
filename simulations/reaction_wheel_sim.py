@@ -127,10 +127,13 @@ if __name__ == "__main__":
     _plot(wheel_angular_vel*9.5493, 'reaction wheel angular velocities', 'rpm')
     _plot(wheel_angular_accel, 'reaction wheel angular accelerations', 'rad/s/s')
 
-    from animation import AnimateAttitude
+    from animation import AnimateAttitude, DrawingVectors, AdditionalPlots
     num = 200
-    a = AnimateAttitude(dcm[::num], dcm_rn)
-    a.animate_and_plot(time[::num], wheel_angular_vel[::num]*9.5493, title='Reaction Wheel Angular Velocities',
-                       ylabel='rpm')
+    plot1 = AdditionalPlots(time[::num], wheel_angular_vel[::num]*9.5493, title='Reaction Wheel Angular Velocities',
+                            ylabel='rpm')
+    ref1 = DrawingVectors(dcm[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=4)
+    ref2 = DrawingVectors(dcm_rn, 'axes', color=['r', 'y', 'b'], label=['Ref x', 'Ref y', 'Ref z'], length=4)
+    a = AnimateAttitude(dcm[::num], draw_vector=[ref1, ref2], additional_plots=plot1)
+    a.animate_and_plot()
 
     plt.show()

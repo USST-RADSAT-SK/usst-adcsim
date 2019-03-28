@@ -95,9 +95,11 @@ if __name__ == "__main__":
     # plot the mrp magnitude
     _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
 
-    from animation import AnimateAttitude
-
-    a = AnimateAttitude(dcm[::100], dcm_rn)
+    from animation import AnimateAttitude, DrawingVectors
+    num = 100
+    ref1 = DrawingVectors(dcm[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=4)
+    ref2 = DrawingVectors(dcm_rn, 'axes', color=['r', 'y', 'b'], label=['Ref x', 'Ref y', 'Ref z'], length=4)
+    a = AnimateAttitude(dcm[::num], draw_vector=[ref1, ref2])
     a.animate()
 
     plt.show()

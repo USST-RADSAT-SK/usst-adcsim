@@ -69,10 +69,13 @@ if __name__ == "__main__":
     _plot(controls, 'control torque components', 'Torque (Nm)')
     _plot(m, 'coil magnetic moments', '(A*m^2)')
 
-    from animation import AnimateAttitude
+    from animation import AnimateAttitude, DrawingVectors, AdditionalPlots
     num = 200
-    a = AnimateAttitude(dcm[::num], draw_vector=mag_vec_def)
-    a.animate_and_plot(time[::num], m[::num], 'Magnetic moment', 'A*m^2', draw_vec_type='double')
-
+    vec = DrawingVectors(mag_vec_def, 'double', 'r', 'B-field', 6)
+    body = DrawingVectors(dcm[::num], 'axes', ['C0', 'C1', 'C2'], ['Body x', 'Body y', 'Body z'], 4)
+    plot1 = AdditionalPlots(time[::num], m[::num], title='Magnetic moment', ylabel='A*m^2')
+    plot2 = AdditionalPlots(time[::num], mag[::num], title='body frame B-field', ylabel='T')
+    a = AnimateAttitude(dcm[::num], draw_vector=[vec, body], additional_plots=[plot1, plot2])
+    a.animate_and_plot()
 
     plt.show()

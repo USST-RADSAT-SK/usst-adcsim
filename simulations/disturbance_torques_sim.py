@@ -130,11 +130,12 @@ if __name__ == "__main__":
     # plot the mrp magnitude
     _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
 
-    from animation import AnimateAttitude
-
+    from animation import AnimateAttitude, DrawingVectors, AdditionalPlots
     num = 10
-    a = AnimateAttitude(dcm[::num], draw_vector=nadir[::num])
-    a.animate_and_ground_track_and_plot(lats[::num], lons[::num], time[::num], controls[::num], title='control torque',
-                                        ylabel='Nm')
+    vec1 = DrawingVectors(nadir[::num], 'single', color='b', label='nadir', length=5)
+    ref1 = DrawingVectors(dcm[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=4)
+    plot1 = AdditionalPlots(lons[::num], lats[::num], groundtrack=True)
+    a = AnimateAttitude(dcm[::num], draw_vector=[vec1, ref1], additional_plots=plot1)
+    a.animate_and_plot()
 
     plt.show()

@@ -2,14 +2,104 @@ import numpy as np
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
+from typing import List, Union
+
+
+class DrawingVectors:
+    def __init__(self, data: np.ndarray, draw_type: str, color: Union[List[str], str] = 'r',
+                 label: Union[List[str], str] = 'NA', length: Union[List[int], int] = 6):
+
+        # valid types: single, double, axes
+        assert (draw_type == 'single' or draw_type == 'double' or draw_type == 'axes'), "invalid draw_type"
+
+        if len(data) > 3:
+            self.changing = True
+        else:
+            self.changing = False
+
+        if self.changing:
+            check_data = data[0]
+        else:
+            check_data = data
+
+        if draw_type == 'single':
+            if not isinstance(color, str) or not isinstance(label, str) or not isinstance(length, int):
+                raise Exception("for draw_type == 'single' color, label, and length should be single values")
+
+        if draw_type == 'double':
+            if (not isinstance(color, str) and isinstance(color, list) and not len(color) == 2) or \
+                    (not isinstance(label, str) and isinstance(label, list) and not len(label) == 2) or \
+                    (not isinstance(length, str) and isinstance(length, list) and not len(length) == 2):
+                raise Exception("for draw_type == 'double' color, label, and length should be single values or "
+                                "length 2 lists")
+
+        if draw_type == 'axes':
+            assert (check_data.shape == (3, 3)), "can only get axes from a 3x3 DCM matrix"
+
+            if (not isinstance(color, str) and isinstance(color, list) and not len(color) == 3) or \
+                    (not isinstance(label, str) and isinstance(label, list) and not len(label) == 3) or \
+                    (not isinstance(length, str) and isinstance(length, list) and not len(length) == 3):
+                raise Exception("for draw_type == 'axes' color, label, and length should be single values or "
+                                "length 2 lists")
+
+        self.data = data
+        self.draw_type = draw_type
+        self.color = color
+        self.label = label
+        self.length = length
+
+        if isinstance(color, str):
+            self.color = [self.color]
+
+        if isinstance(label, str):
+            self.label = [self.label]
+
+        if isinstance(length, int):
+            self.length = [self.length]
+
+
+class AdditionalPlots:
+    def __init__(self, xdata: np.ndarray, ydata: np.ndarray, labels: Union[List[str], str] = ('X', 'Y', 'Z'),
+                 title='NA', xlabel='time', ylabel='NA', groundtrack=False):
+        self.xdata = xdata
+        self.ydata = ydata
+        self.labels = labels
+        self.groundtrack = groundtrack
+
+        if groundtrack:
+            self.title = ''
+            self.xlabel = ''
+            self.ylabel = ''
+            self.xmin = -180
+            self.xmax = 180
+            self.ymin = -85
+            self.ymax = 85
+            self.projection = ccrs.PlateCarree()
+        else:
+            self.title = title
+            self.xlabel = xlabel
+            self.ylabel = ylabel
+            self.xmin = xdata.min()
+            self.xmax = xdata.max()
+            self.ymin = ydata.min()
+            self.ymax = ydata.max()
+            self.projection = None
 
 
 class AnimateAttitude:
-    def __init__(self, dcm, dcm_reference=None, draw_vector=None, x_mag=1, y_mag=1, z_mag=2):
+    def __init__(self, dcm, draw_vector: Union[List[DrawingVectors], DrawingVectors] = None,
+                 additional_plots: Union[List[AdditionalPlots], AdditionalPlots] = None,
+                 x_mag=1, y_mag=1, z_mag=2):
         self.dcm = np.transpose(dcm.copy(), (0, 2, 1))
         # ^ must get [NB] rather than [BN], because the vertices are in the B frame.
-        self.dcm_reference = dcm_reference
         self.draw_vec = draw_vector
+        self.single_draw_vec = isinstance(self.draw_vec, DrawingVectors)
+        if self.single_draw_vec:
+            self.draw_vec = [self.draw_vec]
+        self.additional_plots = additional_plots
+        self.single_additional_plot = isinstance(self.additional_plots, AdditionalPlots)
+        if self.single_additional_plot:
+            self.additional_plots = [self.additional_plots]
         self.V = np.array([[-x_mag, -y_mag, -z_mag],
                           [x_mag, -y_mag, -z_mag],
                           [x_mag, y_mag, -z_mag],
@@ -19,25 +109,26 @@ class AnimateAttitude:
                           [x_mag, y_mag, z_mag],
                           [-x_mag, y_mag, z_mag]])
 
-        if self.draw_vec is not None and len(self.draw_vec) > 3:
-            self.draw_vec_changing = True
-        else:
-            self.draw_vec_changing = False
+        # duplicate data so that animations can run more smoothly (because you dont have to do checks in the code all
+        # the time)
+        for vect in self.draw_vec:
+            if not vect.changing:
+                vect.data = np.array([vect.data] * len(dcm))
 
-        if self.dcm_reference is not None and len(self.dcm_reference) > 3:
-            self.dcm_reference_changing = True
-        else:
-            self.dcm_reference_changing = False
+            if vect.draw_type == 'double' and len(vect.color) == 1:
+                vect.color = [vect.color[0], vect.color[0]]
+            if vect.draw_type == 'axes' and len(vect.color) == 1:
+                vect.color = [vect.color[0], vect.color[0], vect.color[0]]
 
-    def _get_draw_vec(self, i):
-        if not self.draw_vec_changing:
-            return self.draw_vec
-        return self.draw_vec[i]
+            if vect.draw_type == 'double' and len(vect.label) == 1:
+                vect.label = [vect.label[0], vect.label[0]]
+            if vect.draw_type == 'axes' and len(vect.label) == 1:
+                vect.label = [vect.label[0], vect.label[0], vect.label[0]]
 
-    def _get_dcm_reference(self, i):
-        if not self.dcm_reference_changing:
-            return self.dcm_reference
-        return self.dcm_reference[i]
+            if vect.draw_type == 'double' and len(vect.length) == 1:
+                vect.length = [vect.length[0], vect.length[0]]
+            if vect.draw_type == 'axes' and len(vect.length) == 1:
+                vect.length = [vect.length[0], vect.length[0], vect.length[0]]
 
     def _animate(self, ax, i):
         ax.set_xlim(-4, 4)
@@ -59,167 +150,70 @@ class AnimateAttitude:
 
         # plot sides
         ax.add_collection3d(Poly3DCollection(verts, facecolors='cyan', linewidths=1, edgecolors='r', alpha=.25))
-        ax.quiver(0, 0, 0, self.dcm[i][0, 0], self.dcm[i][1, 0], self.dcm[i][2, 0], length=4)
-        ax.quiver(0, 0, 0, self.dcm[i][0, 1], self.dcm[i][1, 1], self.dcm[i][2, 1], length=4)
-        ax.quiver(0, 0, 0, self.dcm[i][0, 2], self.dcm[i][1, 2], self.dcm[i][2, 2], length=4)
+        # plot arrows
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
+        if self.draw_vec is not None:
+            for vect in self.draw_vec:
+                self._animate_draw_vec(ax, i, vect)
+        ax.legend()
 
-    def _animate_reference(self, ax, i):
-        de = self._get_dcm_reference(i)
-        ax.quiver(0, 0, 0, de[0, 0], de[0, 1], de[0, 2], length=4, color='r')
-        ax.quiver(0, 0, 0, de[1, 0], de[1, 1], de[1, 2], length=4, color='r')
-        ax.quiver(0, 0, 0, de[2, 0], de[2, 1], de[2, 2], length=4, color='r')
+    @staticmethod
+    def _animate_draw_vec(ax, i, vect):
+        ve = vect.data[i]
+        if vect.draw_type == 'single':
+            ve = 2 * ve / np.linalg.norm(ve)
+            ax.quiver(0, 0, 0, ve[0], ve[1], ve[2], length=vect.length[0], color=vect.color[0], label=vect.label[0])
+        if vect.draw_type == 'double':
+            ve = 2 * ve / np.linalg.norm(ve)
+            ax.quiver(0, 0, 0, ve[0], ve[1], ve[2], length=vect.length[0], color=vect.color[0], label=vect.label[0])
+            ax.quiver(0, 0, 0, -ve[0], -ve[1], -ve[2], length=vect.length[1], color=vect.color[1],
+                      label='- ' + vect.label[1])
+        if vect.draw_type == 'axes':
+            for j in range(3):
+                ax.quiver(0, 0, 0, ve[j, 0], ve[j, 1], ve[j, 2], length=vect.length[j], color=vect.color[j],
+                          label=vect.label[j])
 
-    def _animate_draw_vec(self, ax, i, draw_vec_type):
-        ve = self._get_draw_vec(i)
-        ve = 2 * ve / np.linalg.norm(ve)
-        ax.quiver(0, 0, 0, ve[0], ve[1], ve[2], length=6, color='r')
-        if draw_vec_type == 'double':
-            ax.quiver(0, 0, 0, -ve[0], -ve[1], -ve[2], length=6, color='r')
+    @staticmethod
+    def _plot(ax, i, ap):
+        ax.set_xlim(ap.xmin, ap.xmax)
+        ax.set_ylim(ap.ymin, ap.ymax)
+        ax.plot(ap.xdata[:i+1], ap.ydata[:i+1])
+        ax.set_title(ap.title)
+        ax.set_ylabel(ap.ylabel)
+        ax.set_xlabel(ap.xlabel)
+        plt.gca().legend(ap.labels)
 
-    def animate(self, draw_vec_type='single'):
+    @staticmethod
+    def _plot_ground_track(ax, i, ap):
+        ax.coastlines()
+        ax.set_xlim(ap.xmin, ap.xmax)
+        ax.set_ylim(ap.ymin, ap.ymax)
+        ax.plot(ap.xdata[:i+1], ap.ydata[:i+1], '.')
+
+    def animate(self):
         fig = plt.figure()
         for i in range(len(self.dcm)):
             plt.clf()
             ax = fig.add_subplot(111, projection='3d')
             self._animate(ax, i)
-            if self.dcm_reference is not None:
-                self._animate_reference(ax, i)
-            if self.draw_vec is not None:
-                self._animate_draw_vec(ax, i, draw_vec_type)
-
             plt.pause(0.01)
 
-    @staticmethod
-    def _plot(ax, i, xdata, ydata, title, ylabel, xlabel):
-        ax.set_xlim(0, xdata.max())
-        ax.set_ylim(ydata.min(), ydata.max())
-        ax.plot(xdata[:i+1], ydata[:i+1])
-        ax.set_title(title)
-        ax.set_ylabel(ylabel)
-        ax.set_xlabel(xlabel)
+    def animate_and_plot(self):
+        if self.additional_plots is None:
+            raise Exception("There are no additional plots")
+        n = len(self.additional_plots)
 
-    @staticmethod
-    def _plot_ground_track(ax, i, lats, longs):
-        ax.coastlines()
-        ax.set_xlim(-180, 180)
-        ax.set_ylim(-85, 85)
-        ax.plot(longs[:i+1], lats[:i+1], '.')
-
-    def animate_and_plot(self, xdata, ydata, title='NA', ylabel='NA', xlabel='time', draw_vec_type='single'):
         fig = plt.figure(figsize=(15, 5))
         for i in range(len(self.dcm)):
             plt.clf()
             ax = fig.add_subplot(1, 2, 1, projection='3d')
             self._animate(ax, i)
-            if self.dcm_reference is not None:
-                self._animate_reference(ax, i)
-            if self.draw_vec is not None:
-                self._animate_draw_vec(ax, i, draw_vec_type)
-            ax = fig.add_subplot(1, 2, 2)
-            self._plot(ax, i, xdata, ydata, title, ylabel, xlabel)
-            plt.pause(0.01)
-
-    def animate_and_2_plots(self, xdata1, ydata1, xdata2, ydata2, title1='NA', ylabel1='NA', xlabel1='time',
-                            title2='NA', ylabel2='NA', xlabel2='time', draw_vec_type='single'):
-        fig = plt.figure(figsize=(15, 5))
-        for i in range(len(self.dcm)):
-            plt.clf()
-            ax = fig.add_subplot(1, 2, 1, projection='3d')
-            self._animate(ax, i)
-            if self.dcm_reference is not None:
-                self._animate_reference(ax, i)
-            if self.draw_vec is not None:
-                self._animate_draw_vec(ax, i, draw_vec_type)
-            ax = fig.add_subplot(2, 2, 2)
-            self._plot(ax, i, xdata1, ydata1, title1, ylabel1, xlabel1)
-            ax = fig.add_subplot(2, 2, 4)
-            self._plot(ax, i, xdata2, ydata2, title2, ylabel2, xlabel2)
-            plt.pause(0.01)
-
-    def animate_and_n_plots(self, xdata_arr, ydata_arr, title_arr='NA', ylabel_arr='NA', xlabel_arr='time',
-                            draw_vec_type='single'):
-        fig = plt.figure(figsize=(18, 8))
-        n = len(ydata_arr)
-        if title_arr == 'NA':
-            title_arr = ['NA'] * n
-        if ylabel_arr == 'NA':
-            ylabel_arr = ['NA'] * n
-        if xlabel_arr == 'time':
-            xlabel_arr = ['time'] * n
-        for i in range(len(self.dcm)):
-            plt.clf()
-            ax = fig.add_subplot(1, n, 1, projection='3d')
-            self._animate(ax, i)
-            if self.dcm_reference is not None:
-                self._animate_reference(ax, i)
-            if self.draw_vec is not None:
-                self._animate_draw_vec(ax, i, draw_vec_type)
-            for j in range(n):
-                ax = fig.add_subplot(n, 2, 2*(j+1))
-                if len(xdata_arr) != n:
-                    self._plot(ax, i, xdata_arr, ydata_arr[j], title_arr[j], ylabel_arr[j], xlabel_arr[j])
+            for j, ap in enumerate(self.additional_plots):
+                ax = fig.add_subplot(n, 2, 2*(j+1), projection=ap.projection)
+                if ap.groundtrack:
+                    self._plot_ground_track(ax, i, ap)
                 else:
-                    self._plot(ax, i, xdata_arr[j], ydata_arr[j], title_arr[j], ylabel_arr[j], xlabel_arr[j])
-            plt.pause(0.01)
-
-    def animate_and_ground_track(self, lats, lngs, draw_vec_type='single'):
-        fig = plt.figure(figsize=(15, 5))
-        for i in range(len(self.dcm)):
-            plt.clf()
-            ax = fig.add_subplot(1, 2, 1, projection='3d')
-            self._animate(ax, i)
-            if self.dcm_reference is not None:
-                self._animate_reference(ax, i)
-            if self.draw_vec is not None:
-                self._animate_draw_vec(ax, i, draw_vec_type)
-            ax = fig.add_subplot(1, 2, 2, projection=ccrs.PlateCarree())
-            self._plot_ground_track(ax, i, lats, lngs)
-            plt.pause(0.01)
-
-    def animate_and_ground_track_and_plot(self, lats, lngs, xdata, ydata, title='NA', ylabel='NA', xlabel='time',
-                                          draw_vec_type='single'):
-        fig = plt.figure(figsize=(15, 5))
-        for i in range(len(self.dcm)):
-            plt.clf()
-            ax = fig.add_subplot(1, 2, 1, projection='3d')
-            self._animate(ax, i)
-            if self.dcm_reference is not None:
-                self._animate_reference(ax, i)
-            if self.draw_vec is not None:
-                self._animate_draw_vec(ax, i, draw_vec_type)
-            ax = fig.add_subplot(2, 2, 2, projection=ccrs.PlateCarree())
-            self._plot_ground_track(ax, i, lats, lngs)
-            ax = fig.add_subplot(2, 2, 4)
-            self._plot(ax, i, xdata, ydata, title, ylabel, xlabel)
-            plt.pause(0.01)
-
-    def animate_and_ground_track_and_n_plots(self, lats, lngs, xdata_arr, ydata_arr, title_arr='NA', ylabel_arr='NA',
-                                             xlabel_arr='time', draw_vec_type='single'):
-        fig = plt.figure(figsize=(18, 8))
-        n = len(ydata_arr)
-        if title_arr == 'NA':
-            title_arr = ['NA'] * n
-        if ylabel_arr == 'NA':
-            ylabel_arr = ['NA'] * n
-        if xlabel_arr == 'time':
-            xlabel_arr = ['time'] * n
-        for i in range(len(self.dcm)):
-            plt.clf()
-            ax = fig.add_subplot(1, n+1, 1, projection='3d')
-            self._animate(ax, i)
-            if self.dcm_reference is not None:
-                self._animate_reference(ax, i)
-            if self.draw_vec is not None:
-                self._animate_draw_vec(ax, i, draw_vec_type)
-            ax = fig.add_subplot(n+1, 2, 2, projection=ccrs.PlateCarree())
-            self._plot_ground_track(ax, i, lats, lngs)
-            for j in range(n):
-                ax = fig.add_subplot(n+1, 2, 2*(j+2))
-                if len(xdata_arr) != n:
-                    self._plot(ax, i, xdata_arr, ydata_arr[j], title_arr[j], ylabel_arr[j], xlabel_arr[j])
-                else:
-                    self._plot(ax, i, xdata_arr[j], ydata_arr[j], title_arr[j], ylabel_arr[j], xlabel_arr[j])
+                    self._plot(ax, i, ap)
             plt.pause(0.01)
