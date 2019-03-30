@@ -64,10 +64,10 @@ if __name__ == "__main__":
         plt.xlabel('Time (s)')
         plt.ylabel(ylabel)
 
-    _plot(omegas, 'angular velocity components', 'angular velocity (rad/s)')
-    _plot(sigmas, 'mrp components', 'mrp component values')
-    _plot(controls, 'control torque components', 'Torque (Nm)')
-    _plot(m, 'coil magnetic moments', '(A*m^2)')
+    # _plot(omegas, 'angular velocity components', 'angular velocity (rad/s)')
+    # _plot(sigmas, 'mrp components', 'mrp component values')
+    # _plot(controls, 'control torque components', 'Torque (Nm)')
+    # _plot(m, 'coil magnetic moments', '(A*m^2)')
 
     from animation import AnimateAttitude, DrawingVectors, AdditionalPlots
     num = 200

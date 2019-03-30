@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 # To calculate areas of polygons, the polygon is broken up into triangles and the areas are summed
 
@@ -7,11 +9,16 @@ import numpy as np
 
 
 class Features:
-    def __init__(self, vertices, reflectance_factor):
+    def __init__(self, vertices, reflectance_factor, color='r'):
         self.v = vertices
         self.area = self._total_area()
         self.centroid = self._centroid()
         self.q = reflectance_factor
+        self.color = color
+
+        # convert to meters
+        self.area = self.area / 10
+        self.centroid = self.centroid/10
 
         # the methods used here to calculate area and centroid only works for common shapes
 
@@ -61,17 +68,134 @@ class BackgroundFeature:
 
         self.centroid = np.array([centroid_x/self.area, centroid_y/self.area])
 
+        # convert to meters
+        self.area = self.area / 10
+        self.centroid = self.centroid/10
+
 
 class Faces:
-    def __init__(self, side1, side2, features, reflectance_factor, origin=(0, 0)):
+    def __init__(self, name, side1, side2, reflectance_factor, features=None, origin=(0, 0)):
+        self.name = name
+        self.side1 = side1
+        self.side2 = side2
         self.features = features
         if isinstance(features, Features):  # make list if it is not
             self.features = [self.features]
+        elif features is None:
+            self.features = []
 
         self.features.append(BackgroundFeature(side1 * side2, self.features, reflectance_factor))
+
+        if self.name == 'z+':
+            self.sign1 = -1
+            self.sign2 = 1
+        elif self.name == 'z-':
+            self.sign1 = 1
+            self.sign2 = 1
+        elif self.name == 'y+':
+            self.sign1 = 1
+            self.sign2 = 1
+        elif self.name == 'y-':
+            self.sign1 = -1
+            self.sign2 = 1
+        elif self.name == 'x+':
+            self.sign1 = -1
+            self.sign2 = 1
+        elif self.name == 'x-':
+            self.sign1 = 1
+            self.sign2 = 1
 
         # TODO: add logic that makes sure that the features are contained within the rectangle
 
         # TODO: take origin into account
         # ^ This could come into play if we choose to define "faces"/surfaces that are not one of the six surfaces
         # of the Cube. I.e. an antenna.
+
+
+class CubeSat:
+    def __init__(self, faces):
+        self.faces = faces
+
+    def visualize(self):
+        z = np.array([[-0.5, -0.5, -1],
+                          [0.5, -0.5, -1],
+                          [0.5, 0.5, -1],
+                          [-0.5, 0.5, -1],
+                          [-0.5, -0.5, 1],
+                          [0.5, -0.5, 1],
+                          [0.5, 0.5, 1],
+                          [-0.5, 0.5, 1]])
+
+        verts = [
+            [z[1], z[2], z[6], z[5]],
+            [z[4], z[7], z[3], z[0]],
+            [z[2], z[3], z[7], z[6]],
+            [z[0], z[1], z[5], z[4]],
+            [z[4], z[5], z[6], z[7]],
+            [z[0], z[1], z[2], z[3]]
+        ]
+
+        # plot sides
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.set_xlim(-2, 2)
+        ax.set_ylim(-2, 2)
+        ax.set_zlim(-2, 2)
+
+        facecolors = ['C0', 'C1', 'C2', 'C3', 'C4', 'C5']
+        for face in self.faces:
+            for feature in face.features[:-1]:
+                z = []
+                if face.name == 'z+':
+                    for vert in feature.v:
+                        z.append([vert[0], vert[1], 1.05])
+                if face.name == 'z-':
+                    for vert in feature.v:
+                        z.append([-vert[0], vert[1], -1.05])
+                if face.name == 'y+':
+                    for vert in feature.v:
+                        z.append([-vert[0], 0.55, vert[1]])
+                if face.name == 'y-':
+                    for vert in feature.v:
+                        z.append([vert[0], -0.55, vert[1]])
+                if face.name == 'x+':
+                    for vert in feature.v:
+                        z.append([0.55, vert[0], vert[1]])
+                if face.name == 'x-':
+                    for vert in feature.v:
+                        z.append([-0.55, -vert[0], vert[1]])
+                verts.append(z)
+                facecolors.append(feature.color)
+
+        ax.add_collection3d(Poly3DCollection(verts, facecolors=facecolors, linewidths=1,
+                                             edgecolors='r', alpha=.25))
+
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+
+
+def create_solar_panel(start):
+    s = start
+    return np.array([[s[0], s[1]], [s[0] + 0.8, s[1]], [s[0] + 0.8, s[1] + 0.3], [s[0] + 0.6, s[1] + 0.4],
+                     [s[0] + 0.2, s[1] + 0.4], [s[0], s[1] + 0.3]])
+
+if __name__ == "__main__":
+    # f1 = Features(np.array([[-0.3, -0.3], [-0.3, -0.1], [-0.4, -0.1], [-0.4, -0.3]]), 0.8)
+    solar_zplus = Features(create_solar_panel([-0.4, -0.4]), 1, color='k')
+    solar_zminus = Features(create_solar_panel([-0.4, -0.4]), 1, color='k')
+    solar_yplus = Features(create_solar_panel([-0.4, -0.9]), 1, color='k')
+    solar_yminus = Features(create_solar_panel([-0.4, -0.9]), 1, color='k')
+    solar_xplus = Features(create_solar_panel([-0.4, -0.9]), 1, color='k')
+    solar_xminus = Features(create_solar_panel([-0.4, -0.9]), 1, color='k')
+
+    zplus = Faces('z+', 1, 1, 0.6, features=solar_zplus)
+    zminus = Faces('z-', 1, 1, 0.6, features=solar_zminus)
+    xplus = Faces('x+', 1, 1, 0.6, features=solar_xplus)
+    xminus = Faces('x-', 1, 1, 0.6, features=solar_xminus)
+    yplus = Faces('y+', 1, 1, 0.6, features=solar_yplus)
+    yminus = Faces('y-', 1, 1, 0.6, features=solar_yminus)
+
+    cubesat = CubeSat([xplus, xminus, yplus, yminus, zplus, zminus])
+    cubesat.visualize()
+    plt.show()

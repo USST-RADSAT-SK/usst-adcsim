@@ -7,10 +7,30 @@ import integral_considerations as ic
 import disturbance_torques as dt
 import util as ut
 from skyfield.api import load, EarthSatellite
+from astropy.coordinates import get_sun
+from astropy.time import Time
+from CubeSat_model import Features, Faces, create_solar_panel, CubeSat
 
 time_step = 10
-end_time = 100000
+end_time = 30000
 time = np.arange(0, end_time, time_step)
+
+# create the CubeSat faces
+solar_zplus = Features(create_solar_panel([-0.4, -0.4]), 1, color='k')
+solar_zminus = Features(create_solar_panel([-0.4, -0.4]), 1, color='k')
+solar_yplus = Features(create_solar_panel([-0.4, -0.9]), 1, color='k')
+solar_yminus = Features(create_solar_panel([-0.4, -0.9]), 1, color='k')
+solar_xplus = Features(create_solar_panel([-0.4, -0.9]), 1, color='k')
+solar_xminus = Features(create_solar_panel([-0.4, -0.9]), 1, color='k')
+
+zplus = Faces('z+', 1, 1, 0.6, features=solar_zplus)
+zminus = Faces('z-', 1, 1, 0.6, features=solar_zminus)
+xplus = Faces('x+', 1, 1, 0.6, features=solar_xplus)
+xminus = Faces('x-', 1, 1, 0.6, features=solar_xminus)
+yplus = Faces('y+', 1, 1, 0.6, features=solar_yplus)
+yminus = Faces('y-', 1, 1, 0.6, features=solar_yminus)
+
+cubesat = CubeSat([xplus, xminus, yplus, yminus, zplus, zminus])
 
 # declare the bodies inertia, initial attitude, initial angular velocity, control torque constants, and max torque
 # limitation
@@ -56,7 +76,10 @@ states[0] = [sigma0, omega0]
 dcm = np.zeros((len(time), 3, 3))
 dcm[0] = tr.mrp_to_dcm(states[0][0])
 nadir = np.zeros((len(time), 3))
+sun_vec = np.zeros((len(time), 3))
+sun_vec_body = np.zeros((len(time), 3))
 for i in range(len(time) - 1):
+    print(i)
     # propagate orbit
     second += 1*time_step
     if second >= 60:
@@ -82,8 +105,13 @@ for i in range(len(time) - 1):
     nadir[i] = -positions[i]/R0
     ue = dcm[i] @ nadir[i]
 
+    # get sun vector in GCRS
+    sun_vec[i] = get_sun(Time(f'2019-03-{day} {hour}:{minute}:{second}')).cartesian.xyz.value
+    sun_vec[i] = sun_vec[i]/np.linalg.norm(sun_vec[i])
+    sun_vec_body[i] = dcm[i] @ sun_vec[i]
+
     # get disturbance torque
-    controls[i] = dt.gravity_gradient(ue, R0, inertia)
+    controls[i] = dt.solar_pressure(sun_vec_body[i], cubesat.faces)
 
     # propagate attitude state
     states[i+1] = it.rk4(st.state_dot, time_step, states[i], controls[i], inertia, inertia_inv)
@@ -106,8 +134,8 @@ if __name__ == "__main__":
         plt.ylabel(ylabel)
 
 
-    _plot(omegas, 'angular velocity components', 'angular velocity (rad/s)')
-    _plot(sigmas, 'mrp components', 'mrp component values')
+    # _plot(omegas, 'angular velocity components', 'angular velocity (rad/s)')
+    # _plot(sigmas, 'mrp components', 'mrp component values')
 
     # get prv's
     def get_prvs(data):
@@ -122,20 +150,21 @@ if __name__ == "__main__":
 
     # The prv's are obtained and plotted here because they are an intuitive attitude coordinate system
     # and the prv angle as a function of time is the best way to visualize your attitude error.
-    _plot(angle, 'prv angle reference', 'prv angle (rad)')
+    # _plot(angle, 'prv angle reference', 'prv angle (rad)')
 
     # plot the control torque
-    _plot(controls, 'control torque components', 'Torque (Nm)')
+    # _plot(controls, 'control torque components', 'Torque (Nm)')
 
     # plot the mrp magnitude
-    _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
+    # _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
 
     from animation import AnimateAttitude, DrawingVectors, AdditionalPlots
     num = 10
     vec1 = DrawingVectors(nadir[::num], 'single', color='b', label='nadir', length=5)
+    vec2 = DrawingVectors(sun_vec[::num], 'single', color='y', label='sun', length=5)
     ref1 = DrawingVectors(dcm[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=4)
     plot1 = AdditionalPlots(lons[::num], lats[::num], groundtrack=True)
-    a = AnimateAttitude(dcm[::num], draw_vector=[vec1, ref1], additional_plots=plot1)
+    a = AnimateAttitude(dcm[::num], draw_vector=[vec1, vec2, ref1], additional_plots=plot1)
     a.animate_and_plot()
 
     plt.show()
