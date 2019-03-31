@@ -1,6 +1,8 @@
 import util as ut
 import numpy as np
 
+a_solar_constant = 1366 / (3 * (10 ** 8))
+
 
 def gravity_gradient(ue, r0, inertia):
     u = 3.986004418 * (10**14)
@@ -96,25 +98,23 @@ def solar_pressure(sun_vec, faces):
     else:
         real_faces.append(faces[5])
 
-    # find angles to sun of each face
-    angles = np.arccos(sun_vec)
+    tau = np.zeros(3)
 
-    const = 1366/(3*(10**8))
-
-    taux = tauy = tauz = 0
-
-    for face, angle in zip(real_faces, angles):
+    for face, sun in zip(real_faces, sun_vec):
         if face.name[0] == 'z':
             for feature in face.features:
-                taux += const * feature.area * (1 + feature.q) * feature.centroid[1] * np.cos(angle) * face.sign1  # this face.sign should be -1 for z+ and +1 for z-
-                tauy += const * feature.area * (1 + feature.q) * feature.centroid[0] * np.cos(angle) * face.sign2  # should be +1 for both
+                c = a_solar_constant * feature.area * (1 + feature.q) * abs(sun)  # sin sun_vec is a unit vector, this works for the cosine
+                tau[0] += c * feature.centroid[1] * face.sign1  # this face.sign should be -1 for z+ and +1 for z-
+                tau[1] += c * feature.centroid[0] * face.sign2  # should be +1 for both
         elif face.name[0] == 'x':
             for feature in face.features:
-                tauy += const * feature.area * (1 + feature.q) * feature.centroid[1] * np.cos(angle) * face.sign1  # this face.sign should be -1 for x+ and +1 for x-
-                tauz += const * feature.area * (1 + feature.q) * feature.centroid[0] * np.cos(angle) * face.sign2  # should be +1 for both
+                c = a_solar_constant * feature.area * (1 + feature.q) * abs(sun)
+                tau[1] += c * feature.centroid[1] * face.sign1  # this face.sign should be -1 for x+ and +1 for x-
+                tau[2] += c * feature.centroid[0] * face.sign2  # should be +1 for both
         elif face.name[0] == 'y':
             for feature in face.features:
-                taux += const * feature.area * (1 + feature.q) * feature.centroid[1] * np.cos(angle) * face.sign1  # should be +1 for y+ and -1 for y-
-                tauz += const * feature.area * (1 + feature.q) * feature.centroid[0] * np.cos(angle) * face.sign2  # should be +1 for both
+                c = a_solar_constant * feature.area * (1 + feature.q) * abs(sun)
+                tau[0] += c * feature.centroid[1] * face.sign1  # should be +1 for y+ and -1 for y-
+                tau[2] += c * feature.centroid[0] * face.sign2  # should be +1 for both
 
-    return np.array([taux, tauy, tauz])
+    return tau

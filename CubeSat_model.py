@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from typing import Union, List
 
 # To calculate areas of polygons, the polygon is broken up into triangles and the areas are summed
 
@@ -9,8 +10,8 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 
 class Features:
-    def __init__(self, vertices, reflectance_factor, color='r'):
-        self.v = vertices
+    def __init__(self, vertices: np.ndarray, reflectance_factor: int, color: str='r'):
+        self.v = vertices  # in centimeters
         self.area = self._total_area()
         self.centroid = self._centroid()
         self.q = reflectance_factor
@@ -18,7 +19,7 @@ class Features:
 
         # convert to meters
         self.area = self.area / 10
-        self.centroid = self.centroid/10
+        self.centroid = self.centroid / 10
 
         # the methods used here to calculate area and centroid only works for common shapes
 
@@ -50,7 +51,7 @@ class Features:
 
 
 class BackgroundFeature:
-    def __init__(self, area, features, reflectance_factor):
+    def __init__(self, area: Union[int, float], reflectance_factor: int, features: Union[List[Features], Features] = None):
         self.q = reflectance_factor
 
         # to calculate the area of the background feature: (l x w) - area of all features
@@ -70,11 +71,12 @@ class BackgroundFeature:
 
         # convert to meters
         self.area = self.area / 10
-        self.centroid = self.centroid/10
+        self.centroid = self.centroid / 10
 
 
 class Faces:
-    def __init__(self, name, side1, side2, reflectance_factor, features=None, origin=(0, 0)):
+    def __init__(self, name: str, side1: Union[int, float], side2: Union[int, float], reflectance_factor: int,
+                 features: Union[List[Features], Features] = None, origin=(0, 0)):
         self.name = name
         self.side1 = side1
         self.side2 = side2
@@ -84,7 +86,7 @@ class Faces:
         elif features is None:
             self.features = []
 
-        self.features.append(BackgroundFeature(side1 * side2, self.features, reflectance_factor))
+        self.features.append(BackgroundFeature(side1 * side2, reflectance_factor, self.features))
 
         if self.name == 'z+':
             self.sign1 = -1
@@ -113,18 +115,17 @@ class Faces:
 
 
 class CubeSat:
-    def __init__(self, faces):
+    def __init__(self, faces: List[Faces]):
         self.faces = faces
 
-    def visualize(self):
-        z = np.array([[-0.5, -0.5, -1],
+        z = [[-0.5, -0.5, -1],
                           [0.5, -0.5, -1],
                           [0.5, 0.5, -1],
                           [-0.5, 0.5, -1],
                           [-0.5, -0.5, 1],
                           [0.5, -0.5, 1],
                           [0.5, 0.5, 1],
-                          [-0.5, 0.5, 1]])
+                          [-0.5, 0.5, 1]]
 
         verts = [
             [z[1], z[2], z[6], z[5]],
@@ -135,14 +136,7 @@ class CubeSat:
             [z[0], z[1], z[2], z[3]]
         ]
 
-        # plot sides
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.set_xlim(-2, 2)
-        ax.set_ylim(-2, 2)
-        ax.set_zlim(-2, 2)
-
-        facecolors = ['C0', 'C1', 'C2', 'C3', 'C4', 'C5']
+        self.facecolors = ['C0', 'C1', 'C2', 'C3', 'C4', 'C5']
         for face in self.faces:
             for feature in face.features[:-1]:
                 z = []
@@ -165,9 +159,19 @@ class CubeSat:
                     for vert in feature.v:
                         z.append([-0.55, -vert[0], vert[1]])
                 verts.append(z)
-                facecolors.append(feature.color)
+                self.facecolors.append(feature.color)
 
-        ax.add_collection3d(Poly3DCollection(verts, facecolors=facecolors, linewidths=1,
+        self.verts = verts
+
+    def visualize(self):
+        # plot sides
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.set_xlim(-2, 2)
+        ax.set_ylim(-2, 2)
+        ax.set_zlim(-2, 2)
+
+        ax.add_collection3d(Poly3DCollection(self.verts, facecolors=self.facecolors, linewidths=1,
                                              edgecolors='r', alpha=.25))
 
         ax.set_xlabel('X')
@@ -179,6 +183,7 @@ def create_solar_panel(start):
     s = start
     return np.array([[s[0], s[1]], [s[0] + 0.8, s[1]], [s[0] + 0.8, s[1] + 0.3], [s[0] + 0.6, s[1] + 0.4],
                      [s[0] + 0.2, s[1] + 0.4], [s[0], s[1] + 0.3]])
+
 
 if __name__ == "__main__":
     # f1 = Features(np.array([[-0.3, -0.3], [-0.3, -0.1], [-0.4, -0.1], [-0.4, -0.3]]), 0.8)

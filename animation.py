@@ -89,7 +89,7 @@ class AdditionalPlots:
 class AnimateAttitude:
     def __init__(self, dcm, draw_vector: Union[List[DrawingVectors], DrawingVectors] = None,
                  additional_plots: Union[List[AdditionalPlots], AdditionalPlots] = None,
-                 x_mag=1, y_mag=1, z_mag=2):
+                 x_mag=1, y_mag=1, z_mag=2, cubesat_model=None):
         self.dcm = np.transpose(dcm.copy(), (0, 2, 1))
         # ^ must get [NB] rather than [BN], because the vertices are in the B frame.
         self.draw_vec = draw_vector
@@ -100,14 +100,15 @@ class AnimateAttitude:
         self.single_additional_plot = isinstance(self.additional_plots, AdditionalPlots)
         if self.single_additional_plot:
             self.additional_plots = [self.additional_plots]
-        self.V = np.array([[-x_mag, -y_mag, -z_mag],
-                          [x_mag, -y_mag, -z_mag],
-                          [x_mag, y_mag, -z_mag],
-                          [-x_mag, y_mag, -z_mag],
-                          [-x_mag, -y_mag, z_mag],
-                          [x_mag, -y_mag, z_mag],
-                          [x_mag, y_mag, z_mag],
-                          [-x_mag, y_mag, z_mag]])
+        # self.V = np.array([[-x_mag, -y_mag, -z_mag],
+        #                   [x_mag, -y_mag, -z_mag],
+        #                   [x_mag, y_mag, -z_mag],
+        #                   [-x_mag, y_mag, -z_mag],
+        #                   [-x_mag, -y_mag, z_mag],
+        #                   [x_mag, -y_mag, z_mag],
+        #                   [x_mag, y_mag, z_mag],
+        #                   [-x_mag, y_mag, z_mag]])
+        self.cubesat_model = cubesat_model
 
         # duplicate data so that animations can run more smoothly (because you dont have to do checks in the code all
         # the time)
@@ -131,25 +132,28 @@ class AnimateAttitude:
                 vect.length = [vect.length[0], vect.length[0], vect.length[0]]
 
     def _animate(self, ax, i):
-        ax.set_xlim(-4, 4)
-        ax.set_ylim(-4, 4)
-        ax.set_zlim(-4, 4)
+        ax.set_xlim(-2, 2)
+        ax.set_ylim(-2, 2)
+        ax.set_zlim(-2, 2)
 
-        z = (self.dcm[i] @ self.V.T).T
-
-        # plot vertices
-        ax.scatter3D(z[:, 0], z[:, 1], z[:, 2])
-
-        # list of sides' polygons of figure
-        verts = [[z[0], z[1], z[2], z[3]],
-                 [z[4], z[5], z[6], z[7]],
-                 [z[0], z[1], z[5], z[4]],
-                 [z[2], z[3], z[7], z[6]],
-                 [z[1], z[2], z[6], z[5]],
-                 [z[4], z[7], z[3], z[0]]]
+        # z = (self.dcm[i] @ self.V.T).T
+        #
+        # # plot vertices
+        # ax.scatter3D(z[:, 0], z[:, 1], z[:, 2])
+        #
+        # # list of sides' polygons of figure
+        # verts = [[z[0], z[1], z[2], z[3]],
+        #          [z[4], z[5], z[6], z[7]],
+        #          [z[0], z[1], z[5], z[4]],
+        #          [z[2], z[3], z[7], z[6]],
+        #          [z[1], z[2], z[6], z[5]],
+        #          [z[4], z[7], z[3], z[0]]]
+        verts = []
+        for vert in self.cubesat_model.verts:
+            verts.append((self.dcm[i] @ np.array(vert).T).T.tolist())
 
         # plot sides
-        ax.add_collection3d(Poly3DCollection(verts, facecolors='cyan', linewidths=1, edgecolors='r', alpha=.25))
+        ax.add_collection3d(Poly3DCollection(verts, facecolors=self.cubesat_model.facecolors, linewidths=1, edgecolors='r', alpha=.25))
         # plot arrows
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
@@ -217,3 +221,10 @@ class AnimateAttitude:
                 else:
                     self._plot(ax, i, ap)
             plt.pause(0.01)
+
+    def single_instant(self, index):
+        # this method will plot a single instance in time of the CubeSat's attitude. This can be useful for debugging.
+        # the time is given by the index the integration (i.e. the index of all of the arrays involved)
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        self._animate(ax, index)

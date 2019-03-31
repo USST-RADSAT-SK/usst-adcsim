@@ -16,15 +16,13 @@ end_time = 30000
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat faces
-solar_zplus = Features(create_solar_panel([-0.4, -0.4]), 1, color='k')
-solar_zminus = Features(create_solar_panel([-0.4, -0.4]), 1, color='k')
 solar_yplus = Features(create_solar_panel([-0.4, -0.9]), 1, color='k')
 solar_yminus = Features(create_solar_panel([-0.4, -0.9]), 1, color='k')
 solar_xplus = Features(create_solar_panel([-0.4, -0.9]), 1, color='k')
 solar_xminus = Features(create_solar_panel([-0.4, -0.9]), 1, color='k')
 
-zplus = Faces('z+', 1, 1, 0.6, features=solar_zplus)
-zminus = Faces('z-', 1, 1, 0.6, features=solar_zminus)
+zplus = Faces('z+', 1, 1, 0.6)
+zminus = Faces('z-', 1, 1, 0.6)
 xplus = Faces('x+', 1, 1, 0.6, features=solar_xplus)
 xminus = Faces('x-', 1, 1, 0.6, features=solar_xminus)
 yplus = Faces('y+', 1, 1, 0.6, features=solar_yplus)
@@ -126,7 +124,7 @@ if __name__ == "__main__":
     sigmas = states[:, 0]
 
 
-    def _plot(data, title, ylabel):
+    def _plot(data, title='', ylabel=''):
         plt.figure()
         plt.plot(time, data)
         plt.title(title)
@@ -162,9 +160,9 @@ if __name__ == "__main__":
     num = 10
     vec1 = DrawingVectors(nadir[::num], 'single', color='b', label='nadir', length=5)
     vec2 = DrawingVectors(sun_vec[::num], 'single', color='y', label='sun', length=5)
-    ref1 = DrawingVectors(dcm[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=4)
-    plot1 = AdditionalPlots(lons[::num], lats[::num], groundtrack=True)
-    a = AnimateAttitude(dcm[::num], draw_vector=[vec1, vec2, ref1], additional_plots=plot1)
+    ref1 = DrawingVectors(dcm[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=2)
+    plot1 = AdditionalPlots(time[::num], controls[::num], labels=['X', 'Y', 'Z'])
+    a = AnimateAttitude(dcm[::num], draw_vector=[vec1, vec2, ref1], additional_plots=plot1, cubesat_model=cubesat)
     a.animate_and_plot()
 
     plt.show()
