@@ -2,9 +2,10 @@ import util as ut
 import numpy as np
 
 
-def gravity_gradient(ue, R0, inertia):
+def gravity_gradient(ue, r0, inertia):
     u = 3.986004418 * (10**14)
-    return (3*u/(R0**3)) * (ut.cross_product_operator(ue) @ inertia @ ue)
+    return (3*u/(r0**3)) * (ut.cross_product_operator(ue) @ inertia @ ue)
+
 
 def aerodynamic_torque(v, rho):
     """
@@ -77,5 +78,3 @@ def aerodynamic_torque(v, rho):
             net_torque += torque
 
     return net_torque
-
-
