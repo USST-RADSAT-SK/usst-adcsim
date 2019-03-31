@@ -78,3 +78,43 @@ def aerodynamic_torque(v, rho):
             net_torque += torque
 
     return net_torque
+
+
+def solar_pressure(sun_vec, faces):
+    # find faces in the sun light
+    real_faces = []
+    if sun_vec[0] > 0:
+        real_faces.append(faces[0])
+    else:
+        real_faces.append(faces[1])
+    if sun_vec[1] > 0:
+        real_faces.append(faces[2])
+    else:
+        real_faces.append(faces[3])
+    if sun_vec[2] > 0:
+        real_faces.append(faces[4])
+    else:
+        real_faces.append(faces[5])
+
+    # find angles to sun of each face
+    angles = np.arccos(sun_vec)
+
+    const = 1366/(3*(10**8))
+
+    taux = tauy = tauz = 0
+
+    for face, angle in zip(real_faces, angles):
+        if face.name[0] == 'z':
+            for feature in face.features:
+                taux += const * feature.area * (1 + feature.q) * feature.centroid[1] * np.cos(angle) * face.sign1  # this face.sign should be -1 for z+ and +1 for z-
+                tauy += const * feature.area * (1 + feature.q) * feature.centroid[0] * np.cos(angle) * face.sign2  # should be +1 for both
+        elif face.name[0] == 'x':
+            for feature in face.features:
+                tauy += const * feature.area * (1 + feature.q) * feature.centroid[1] * np.cos(angle) * face.sign1  # this face.sign should be -1 for x+ and +1 for x-
+                tauz += const * feature.area * (1 + feature.q) * feature.centroid[0] * np.cos(angle) * face.sign2  # should be +1 for both
+        elif face.name[0] == 'y':
+            for feature in face.features:
+                taux += const * feature.area * (1 + feature.q) * feature.centroid[1] * np.cos(angle) * face.sign1  # should be +1 for y+ and -1 for y-
+                tauz += const * feature.area * (1 + feature.q) * feature.centroid[0] * np.cos(angle) * face.sign2  # should be +1 for both
+
+    return np.array([taux, tauy, tauz])
