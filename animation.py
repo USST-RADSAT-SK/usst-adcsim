@@ -7,7 +7,7 @@ from typing import List, Union
 
 class DrawingVectors:
     def __init__(self, data: np.ndarray, draw_type: str, color: Union[List[str], str] = 'r',
-                 label: Union[List[str], str] = 'NA', length: Union[List[int], int] = 6):
+                 label: Union[List[str], str] = 'NA', length: Union[List[int], float, int] = 6):
 
         # valid types: single, double, axes
         assert (draw_type == 'single' or draw_type == 'double' or draw_type == 'axes'), "invalid draw_type"
@@ -23,7 +23,7 @@ class DrawingVectors:
             check_data = data
 
         if draw_type == 'single':
-            if not isinstance(color, str) or not isinstance(label, str) or not isinstance(length, int):
+            if not isinstance(color, str) or not isinstance(label, str) or not isinstance(length, (float, int)):
                 raise Exception("for draw_type == 'single' color, label, and length should be single values")
 
         if draw_type == 'double':
@@ -54,7 +54,7 @@ class DrawingVectors:
         if isinstance(label, str):
             self.label = [self.label]
 
-        if isinstance(length, int):
+        if isinstance(length, (float, int)):
             self.length = [self.length]
 
 
@@ -132,9 +132,9 @@ class AnimateAttitude:
                 vect.length = [vect.length[0], vect.length[0], vect.length[0]]
 
     def _animate(self, ax, i):
-        ax.set_xlim(-2, 2)
-        ax.set_ylim(-2, 2)
-        ax.set_zlim(-2, 2)
+        ax.set_xlim(-0.2, 0.2)  # hardcoded for now
+        ax.set_ylim(-0.2, 0.2)
+        ax.set_zlim(-0.2, 0.2)
 
         # z = (self.dcm[i] @ self.V.T).T
         #

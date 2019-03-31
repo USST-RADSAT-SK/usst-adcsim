@@ -11,17 +11,18 @@ from typing import Union, List
 
 class Features:
     def __init__(self, vertices: np.ndarray, reflectance_factor: Union[int, float], color: str = 'r'):
-        self.v = vertices  # in centimeters
+        self.v = vertices
         self.area = self._total_area()
         self.centroid = self._centroid()
         self.q = reflectance_factor
         self.color = color
 
         # convert to meters
-        self.area = self.area / 10
-        self.centroid = self.centroid / 10
+        self.area = self.area
+        self.centroid = self.centroid
 
         # the methods used here to calculate area and centroid only works for common shapes
+        # more specifically: when the method to calculate areas by summing up triangles works.
 
     @staticmethod
     def _triangle_area(v):
@@ -71,8 +72,8 @@ class BackgroundFeature:
         self.centroid = np.array([centroid_x/self.area, centroid_y/self.area])
 
         # convert to meters
-        self.area = self.area / 10
-        self.centroid = self.centroid / 10
+        self.area = self.area
+        self.centroid = self.centroid
 
 
 class Faces:
@@ -80,7 +81,7 @@ class Faces:
                  reflectance_factor: Union[int, float], features: Union[List[Features], Features] = None,
                  origin=(0, 0)):
         self.name = name
-        self.side1 = side1
+        self.side1 = side1  # note: right now the sides are kind of arbitrary, other than some enforcement in the CubeSat class
         self.side2 = side2
         self.features = features
         if isinstance(features, Features):  # make list if it is not
@@ -118,17 +119,27 @@ class Faces:
 
 class CubeSat:
     def __init__(self, faces: List[Faces]):
+        if not (faces[0].side1 == faces[1].side1 == faces[2].side1 == faces[3].side1 and faces[2].side2 ==
+                faces[3].side2 == faces[4].side1 == faces[5].side1 and faces[0].side2 == faces[1].side2 ==
+                faces[4].side2 == faces[5].side2):
+            raise Exception('The dimensions of the first 6 faces do not form a Cube.')
+
+        z_length2 = faces[0].side1/2
+        x_length2 = faces[2].side2/2
+        y_length2 = faces[5].side1/2
+
         self.faces = faces
 
-        z = [[-0.5, -0.5, -1],
-                          [0.5, -0.5, -1],
-                          [0.5, 0.5, -1],
-                          [-0.5, 0.5, -1],
-                          [-0.5, -0.5, 1],
-                          [0.5, -0.5, 1],
-                          [0.5, 0.5, 1],
-                          [-0.5, 0.5, 1]]
+        z = [[-x_length2, -y_length2, -z_length2],
+                          [x_length2, -y_length2, -z_length2],
+                          [x_length2, y_length2, -z_length2],
+                          [-x_length2, y_length2, -z_length2],
+                          [-x_length2, -y_length2, z_length2],
+                          [x_length2, -y_length2, z_length2],
+                          [x_length2, y_length2, z_length2],
+                          [-x_length2, y_length2, z_length2]]
 
+        # verts is 100% for plots right now
         verts = [
             [z[1], z[2], z[6], z[5]],
             [z[4], z[7], z[3], z[0]],
@@ -144,22 +155,22 @@ class CubeSat:
                 z = []
                 if face.name == 'z+':
                     for vert in feature.v:
-                        z.append([vert[0], vert[1], 1.05])
+                        z.append([vert[0], vert[1], z_length2*1.05])  # put the feature slightly off the face so that matplotlib renders it better
                 if face.name == 'z-':
                     for vert in feature.v:
-                        z.append([-vert[0], vert[1], -1.05])
+                        z.append([-vert[0], vert[1], -z_length2*1.05])
                 if face.name == 'y+':
                     for vert in feature.v:
-                        z.append([-vert[0], 0.55, vert[1]])
+                        z.append([-vert[0], y_length2*1.05, vert[1]])
                 if face.name == 'y-':
                     for vert in feature.v:
-                        z.append([vert[0], -0.55, vert[1]])
+                        z.append([vert[0], -y_length2*1.05, vert[1]])
                 if face.name == 'x+':
                     for vert in feature.v:
-                        z.append([0.55, vert[0], vert[1]])
+                        z.append([x_length2*1.05, vert[0], vert[1]])
                 if face.name == 'x-':
                     for vert in feature.v:
-                        z.append([-0.55, -vert[0], vert[1]])
+                        z.append([-x_length2*1.05, -vert[0], vert[1]])
                 verts.append(z)
                 self.facecolors.append(feature.color)
 
@@ -169,9 +180,9 @@ class CubeSat:
         # plot sides
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-        ax.set_xlim(-2, 2)
-        ax.set_ylim(-2, 2)
-        ax.set_zlim(-2, 2)
+        ax.set_xlim(-0.2, 0.2)  # hardcoded for now
+        ax.set_ylim(-0.2, 0.2)
+        ax.set_zlim(-0.2, 0.2)
 
         ax.add_collection3d(Poly3DCollection(self.verts, facecolors=self.facecolors, linewidths=1,
                                              edgecolors='r', alpha=.25))
@@ -183,26 +194,26 @@ class CubeSat:
 
 def create_solar_panel(start):
     s = start
-    return np.array([[s[0], s[1]], [s[0] + 0.8, s[1]], [s[0] + 0.8, s[1] + 0.3], [s[0] + 0.6, s[1] + 0.4],
-                     [s[0] + 0.2, s[1] + 0.4], [s[0], s[1] + 0.3]])
+    return np.array([[s[0], s[1]], [s[0] + 0.08, s[1]], [s[0] + 0.08, s[1] + 0.03], [s[0] + 0.06, s[1] + 0.04],
+                     [s[0] + 0.02, s[1] + 0.04], [s[0], s[1] + 0.03]])
 
 
 if __name__ == "__main__":
     # f1 = Features(np.array([[-0.3, -0.3], [-0.3, -0.1], [-0.4, -0.1], [-0.4, -0.3]]), 0.8)
-    solar_zplus = Features(create_solar_panel([-0.4, -0.4]), 1, color='k')
-    solar_zminus = Features(create_solar_panel([-0.4, -0.4]), 1, color='k')
-    solar_yplus = Features(create_solar_panel([-0.4, -0.9]), 1, color='k')
-    solar_yminus = Features(create_solar_panel([-0.4, -0.9]), 1, color='k')
-    solar_xplus = Features(create_solar_panel([-0.4, -0.9]), 1, color='k')
-    solar_xminus = Features(create_solar_panel([-0.4, -0.9]), 1, color='k')
+    solar_zplus = Features(create_solar_panel([-0.04, -0.04]), 1, color='k')
+    solar_zminus = Features(create_solar_panel([-0.04, -0.04]), 1, color='k')
+    solar_yplus = Features(create_solar_panel([-0.04, -0.09]), 1, color='k')
+    solar_yminus = Features(create_solar_panel([-0.04, -0.09]), 1, color='k')
+    solar_xplus = Features(create_solar_panel([-0.04, -0.09]), 1, color='k')
+    solar_xminus = Features(create_solar_panel([-0.04, -0.09]), 1, color='k')
 
-    zplus = Faces('z+', 1, 1, 0.6, features=solar_zplus)
-    zminus = Faces('z-', 1, 1, 0.6, features=solar_zminus)
-    xplus = Faces('x+', 1, 1, 0.6, features=solar_xplus)
-    xminus = Faces('x-', 1, 1, 0.6, features=solar_xminus)
-    yplus = Faces('y+', 1, 1, 0.6, features=solar_yplus)
-    yminus = Faces('y-', 1, 1, 0.6, features=solar_yminus)
+    zplus = Faces('z+', 0.1, 0.1, 0.6, features=solar_zplus)
+    zminus = Faces('z-', 0.1, 0.1, 0.6, features=solar_zminus)
+    xplus = Faces('x+', 0.2, 0.1, 0.6, features=solar_xplus)
+    xminus = Faces('x-', 0.2, 0.1, 0.6, features=solar_xminus)
+    yplus = Faces('y+', 0.2, 0.1, 0.6, features=solar_yplus)
+    yminus = Faces('y-', 0.2, 0.1, 0.6, features=solar_yminus)
 
-    cubesat = CubeSat([xplus, xminus, yplus, yminus, zplus, zminus])
+    cubesat = CubeSat([xplus, xminus, yplus, yminus, zplus, zminus])  # always put the faces in in this order
     cubesat.visualize()
     plt.show()
