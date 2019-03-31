@@ -10,7 +10,7 @@ from typing import Union, List
 
 
 class Features:
-    def __init__(self, vertices: np.ndarray, reflectance_factor: int, color: str='r'):
+    def __init__(self, vertices: np.ndarray, reflectance_factor: Union[int, float], color: str = 'r'):
         self.v = vertices  # in centimeters
         self.area = self._total_area()
         self.centroid = self._centroid()
@@ -51,7 +51,8 @@ class Features:
 
 
 class BackgroundFeature:
-    def __init__(self, area: Union[int, float], reflectance_factor: int, features: Union[List[Features], Features] = None):
+    def __init__(self, area: Union[int, float], reflectance_factor: Union[int, float],
+                 features: Union[List[Features], Features] = None):
         self.q = reflectance_factor
 
         # to calculate the area of the background feature: (l x w) - area of all features
@@ -75,8 +76,9 @@ class BackgroundFeature:
 
 
 class Faces:
-    def __init__(self, name: str, side1: Union[int, float], side2: Union[int, float], reflectance_factor: int,
-                 features: Union[List[Features], Features] = None, origin=(0, 0)):
+    def __init__(self, name: str, side1: Union[int, float], side2: Union[int, float],
+                 reflectance_factor: Union[int, float], features: Union[List[Features], Features] = None,
+                 origin=(0, 0)):
         self.name = name
         self.side1 = side1
         self.side2 = side2
@@ -138,7 +140,7 @@ class CubeSat:
 
         self.facecolors = ['C0', 'C1', 'C2', 'C3', 'C4', 'C5']
         for face in self.faces:
-            for feature in face.features[:-1]:
+            for feature in face.features[:-1]:  # loop through all features except the background feature
                 z = []
                 if face.name == 'z+':
                     for vert in feature.v:
