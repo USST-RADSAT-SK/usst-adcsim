@@ -5,23 +5,30 @@ from typing import Union, List
 
 
 class Face2D:
-    def __init__(self, vertices: np.ndarray, *hole_vertices: np.ndarray):
+    def __init__(self, vertices: np.ndarray, sigma_n: float=0.8, sigma_t: float=0.8):
         """
         Parameters
         ----------
         vertices : np.ndarray
-            2D vertices, shape (2, n)
-        *hole_vertices : np.ndarray
-            2D vertices defining holes in the polygon, shape (2, n)
+            2D vertices, shape (2, n) - Should be specified in the counterclockwise direction, and the first and last
+            point should be the same. Holes can be specified by appending the vertices of the hole listed in the
+            clockwise direction. The first and last vertices of the outer polygon, as well as the first and last
+            vertices of each hole, should also be the same.
+        sigma_n : float
+            Normal momentum exchange coefficient, used to compute the aerodynamic force on a surface.
+        sigma_t : float
+            Tangential momentum exchange coefficient, used to compute the aerodynamic force on a surface.
         """
 
         assert(len(vertices.shape) == 2)
         assert(vertices.shape[0] == 2)
-        assert(np.all(vertices[:, 0] == vertices[:, -1]))
 
         self._vertices = vertices
         self._area = self._polygon_area(vertices)
         self._centroid = self._polygon_centroid(vertices)
+
+        self._sigma_n = sigma_n
+        self._sigma_t = sigma_t
 
     @property
     def vertices(self):
@@ -38,6 +45,50 @@ class Face2D:
     @property
     def centroid(self):
         return self._centroid
+
+    @property
+    def sigma_n(self):
+        return self._sigma_n
+
+    @property
+    def sigma_t(self):
+        return self._sigma_t
+
+    def __add__(self, other):
+        if isinstance(other, np.ndarray):
+            return Face2D(self.vertices + other.reshape(2, 1), sigma_n=self.sigma_n, sigma_t=self.sigma_t)
+        elif isinstance(other, Face2D):
+            return Face2D(np.concatenate((self.vertices, other.vertices), axis=1), sigma_n=self.sigma_n, sigma_t=self.sigma_t)
+        else:
+            raise TypeError(f'Cannot add object of type {type(other)} to Face2D object')
+
+    def __iadd__(self, other):
+        if isinstance(other, np.ndarray):
+            self._vertices += other.reshape(2, 1)
+            return self
+        elif isinstance(other, Face2D):
+            self._vertices = np.concatenate((self._vertices, other.vertices), axis=1)
+            return self
+        else:
+            raise TypeError(f'Cannot add object of type {type(other)} to Face2D object')
+
+    def __sub__(self, other):
+        if isinstance(other, np.ndarray):
+            return Face2D(self.vertices - other.reshape(2, 1), sigma_n=self.sigma_n, sigma_t=self.sigma_t)
+        elif isinstance(other, Face2D):
+            return Face2D(np.concatenate((self.vertices, other.vertices[:, ::-1]), axis=1), sigma_n=self.sigma_n, sigma_t=self.sigma_t)
+        else:
+            raise TypeError(f'Cannot subtract object of type {type(other)} from Face2D object')
+
+    def __isub__(self, other):
+        if isinstance(other, np.ndarray):
+            self._vertices -= other.reshape(2, 1)
+            return self
+        elif isinstance(other, Face2D):
+            self._vertices = np.concatenate((self._vertices, other.vertices[:, ::-1]), axis=1)
+            return self
+        else:
+            raise TypeError(f'Cannot add object of type {type(other)} to Face2D object')
 
     @staticmethod
     def _polygon_area(v: np.ndarray):
@@ -65,12 +116,14 @@ class Face2D:
 
 
 class Face3D:
-    def __init__(self, face: Face2D, orientation: Union[str, np.ndarray], translation: np.ndarray):
+    def __init__(self, face: Face2D, orientation: Union[str, np.ndarray]='+x+y', translation: np.ndarray=np.zeros(3), color='k'):
         self._orientation = np.eye(3)
         self._translation = np.zeros((3, 1))
         self.face = face
         self.orientation = orientation
         self.translation = translation
+
+        self._color = color
 
     @property
     def vertices(self):
@@ -85,6 +138,10 @@ class Face3D:
         return self._centroid
 
     @property
+    def normal(self):
+        return self._normal
+
+    @property
     def orientation(self):
         return self._orientation
 
@@ -94,10 +151,10 @@ class Face3D:
             e1 = self._unit_vector_from_string(value[:2])
             e2 = self._unit_vector_from_string(value[2:])
             e3 = np.cross(e1, e2)
-            self._orientation =  np.stack((e1, e2, e3))
+            self._orientation = np.column_stack((e1, e2, e3))
         else:
             self._orientation = value
-        self._position_face()
+        self._set_face_positions()
 
     @property
     def translation(self):
@@ -106,7 +163,7 @@ class Face3D:
     @translation.setter
     def translation(self, value: np.ndarray):
         self._translation = value.reshape(3, 1)
-        self._position_face()
+        self._set_face_positions()
 
     @property
     def face(self):
@@ -115,7 +172,11 @@ class Face3D:
     @face.setter
     def face(self, value: Face2D):
         self._face = value
-        self._position_face()
+        self._set_face_positions()
+
+    @property
+    def color(self):
+        return self._color
 
     def _unit_vector_from_string(self, string):
         if string[1] == 'x':
@@ -134,36 +195,91 @@ class Face3D:
         else:
             return None
 
-    def _position_face(self):
+    def _set_face_positions(self):
         # convert 2D centroid/vertices to 3D in the xy plane
         self._vertices = np.zeros((3, self.face.num_vertices))
         self._vertices[:2, :] = self.face.vertices
         self._area = self.face.area
 
         self._centroid = np.array([*self.face.centroid, 0.0])
+        self._normal = np.array([0., 0., 1.])
 
-        # rotate and translate centroid/vertices
+        # rotate and translate centroid/normal/vertices
         self._vertices = self.orientation @ self._vertices
-        self._vertices += self.translation
+        self._centroid = self.orientation @ self._centroid
+        self._normal = self.orientation @ self._normal
 
-class CubeSat:
+        self._vertices += self.translation
+        self._centroid += self.translation.squeeze()
+
+
+class Polygons3D:
     def __init__(self, faces: List[Face3D]):
         self._faces = faces
 
     def plot(self, ax: plt.Axes):
         vertices = [f.vertices.T for f in self._faces]
-        poly = Poly3DCollection(vertices)
+        colors = [f.color for f in self._faces]
+        poly = Poly3DCollection(vertices, facecolors=colors)
         ax.add_collection(poly)
 
+
+class CubeSat(Polygons3D):
+    def __init__(self):
+        large_face = Face2D(np.array([[-0.05, -0.1], [0.05, -0.1], [0.05, 0.1], [-0.05, 0.1], [-0.05, -0.1]]).T)
+        small_face = Face2D(np.array([[-0.05, -0.05], [0.05, -0.05], [0.05, 0.05], [-0.05, 0.05], [-0.05, -0.05]]).T)
+        solar_panel = Face2D(np.array([[-0.04, -0.02], [0.04, -0.02], [0.04, 0.01], [0.03, 0.02], [-0.03, 0.02], [-0.04, 0.01], [-0.04, -0.02]]).T)
+
+        face_px = Face3D(large_face - solar_panel, '+y+z', np.array([0.05, 0., 0.]), color='g')
+        solar_px = Face3D(solar_panel, '+y+z', np.array([0.05, 0., 0.]), color='k')
+        face_mx = Face3D(large_face - solar_panel, '-y+z', np.array([-0.05, 0., 0.]), color='g')
+        solar_mx = Face3D(solar_panel, '-y+z', np.array([-0.05, 0., 0.]), color='k')
+
+        face_py = Face3D(large_face - solar_panel, '-x+z', np.array([0., 0.05, 0.]), color='g')
+        solar_py = Face3D(solar_panel, '-x+z', np.array([0., 0.05, 0.]), color='k')
+        face_my = Face3D(large_face - solar_panel, '+x+z', np.array([0., -0.05, 0.]), color='g')
+        solar_my = Face3D(solar_panel, '+x+z', np.array([0., -0.05, 0.]), color='k')
+
+        face_pz = Face3D(small_face - solar_panel, '+x+y', np.array([0., 0., 0.1]), color='g')
+        solar_pz = Face3D(solar_panel, '+x+y', np.array([0., 0., 0.1]), color='k')
+        face_mz = Face3D(small_face - solar_panel, '-x+y', np.array([0., 0., -0.1]), color='g')
+        solar_mz = Face3D(solar_panel, '-x+y', np.array([0., 0., -0.1]), color='k')
+
+        faces = [value for value in locals().values() if isinstance(value, Face3D)]
+        super().__init__(faces)
+
+
 if __name__ == '__main__':
-    v = np.array([[0, 0], [3, 0], [3, 3], [0, 3], [0, 0], [1.5, 1.5], [1.5, 2.5], [2.5, 2.5], [2.5, 1.5], [1.5, 1.5], [0, 0]], dtype=float).T
-    f2d = Face2D(v)
-    f3d = Face3D(f2d, '+x+y', np.array([0., 0., 0.]))
-    cubesat = CubeSat([f3d])
+    cubesat = CubeSat()
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_xlim(-0.2, 0.2)
+    ax.set_ylim(-0.2, 0.2)
+    ax.set_zlim(-0.2, 0.2)
+    cubesat.plot(ax)
+    plt.show()
+    exit()
+
+    big_square = Face2D(np.array([[-2., -2.], [2., -2.], [2., 2.], [-2., 2.], [-2., -2.]]).T)
+    little_square = Face2D(np.array([[-1., -1.], [1., -1.], [1., 1.], [-1., 1.], [-1., -1.]]).T)
+    square_with_hole = big_square - (little_square + np.array([0.5, 0.5]))
+
+    print(square_with_hole.area)
+    print(square_with_hole.centroid)
+
+    face_3d = Face3D(square_with_hole, orientation='+z-y', translation=np.array([0., 1., 2.]), color='g')
+    print(face_3d.area)
+    print(face_3d.centroid)
+    print(face_3d.normal)
+
+    poly_3d = Polygons3D([face_3d])
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    cubesat.plot(ax)
+    ax.set_xlim(-4, 4)
+    ax.set_ylim(-4, 4)
+    ax.set_zlim(-4, 4)
+    poly_3d.plot(ax)
     plt.show()
 
 
