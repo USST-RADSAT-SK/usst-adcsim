@@ -58,7 +58,7 @@ class Face2D:
         if isinstance(other, np.ndarray):
             return Face2D(self.vertices + other.reshape(2, 1), sigma_n=self.sigma_n, sigma_t=self.sigma_t)
         elif isinstance(other, Face2D):
-            return Face2D(np.concatenate((self.vertices, other.vertices), axis=1), sigma_n=self.sigma_n, sigma_t=self.sigma_t)
+            return Face2D(np.concatenate((self.vertices, other.vertices, self.vertices[:, :1]), axis=1), sigma_n=self.sigma_n, sigma_t=self.sigma_t)
         else:
             raise TypeError(f'Cannot add object of type {type(other)} to Face2D object')
 
@@ -67,7 +67,7 @@ class Face2D:
             self._vertices += other.reshape(2, 1)
             return self
         elif isinstance(other, Face2D):
-            self._vertices = np.concatenate((self._vertices, other.vertices), axis=1)
+            self._vertices = np.concatenate((self.vertices, other.vertices, self.vertices[:, :1]), axis=1)
             return self
         else:
             raise TypeError(f'Cannot add object of type {type(other)} to Face2D object')
@@ -76,7 +76,7 @@ class Face2D:
         if isinstance(other, np.ndarray):
             return Face2D(self.vertices - other.reshape(2, 1), sigma_n=self.sigma_n, sigma_t=self.sigma_t)
         elif isinstance(other, Face2D):
-            return Face2D(np.concatenate((self.vertices, other.vertices[:, ::-1]), axis=1), sigma_n=self.sigma_n, sigma_t=self.sigma_t)
+            return Face2D(np.concatenate((self.vertices, other.vertices[:, ::-1], self.vertices[:, :1]), axis=1), sigma_n=self.sigma_n, sigma_t=self.sigma_t)
         else:
             raise TypeError(f'Cannot subtract object of type {type(other)} from Face2D object')
 
@@ -85,7 +85,7 @@ class Face2D:
             self._vertices -= other.reshape(2, 1)
             return self
         elif isinstance(other, Face2D):
-            self._vertices = np.concatenate((self._vertices, other.vertices[:, ::-1]), axis=1)
+            self._vertices = np.concatenate((self.vertices, other.vertices[:, ::-1], self.vertices[:, :1]), axis=1)
             return self
         else:
             raise TypeError(f'Cannot add object of type {type(other)} to Face2D object')
@@ -116,13 +116,14 @@ class Face2D:
 
 
 class Face3D:
-    def __init__(self, face: Face2D, orientation: Union[str, np.ndarray]='+x+y', translation: np.ndarray=np.zeros(3), color='k'):
+    def __init__(self, face: Face2D, orientation: Union[str, np.ndarray]='+x+y', translation: np.ndarray=np.zeros(3), name='', color='k'):
         self._orientation = np.eye(3)
         self._translation = np.zeros((3, 1))
         self.face = face
         self.orientation = orientation
         self.translation = translation
 
+        self._name = name
         self._color = color
 
     @property
@@ -175,6 +176,10 @@ class Face3D:
         self._set_face_positions()
 
     @property
+    def name(self):
+        return self._name
+
+    @property
     def color(self):
         return self._color
 
@@ -223,6 +228,10 @@ class Polygons3D:
         poly = Poly3DCollection(vertices, facecolors=colors)
         ax.add_collection(poly)
 
+    @property
+    def faces(self):
+        return self._faces
+
 
 class CubeSat(Polygons3D):
     def __init__(self):
@@ -230,26 +239,27 @@ class CubeSat(Polygons3D):
         small_face = Face2D(np.array([[-0.05, -0.05], [0.05, -0.05], [0.05, 0.05], [-0.05, 0.05], [-0.05, -0.05]]).T)
         solar_panel = Face2D(np.array([[-0.04, -0.02], [0.04, -0.02], [0.04, 0.01], [0.03, 0.02], [-0.03, 0.02], [-0.04, 0.01], [-0.04, -0.02]]).T)
 
-        face_px = Face3D(large_face - solar_panel, '+y+z', np.array([0.05, 0., 0.]), color='g')
-        solar_px = Face3D(solar_panel, '+y+z', np.array([0.05, 0., 0.]), color='k')
-        face_mx = Face3D(large_face - solar_panel, '-y+z', np.array([-0.05, 0., 0.]), color='g')
-        solar_mx = Face3D(solar_panel, '-y+z', np.array([-0.05, 0., 0.]), color='k')
+        face_px = Face3D(large_face - solar_panel, '+y+z', np.array([0.05, 0., 0.]), name='+x face', color='g')
+        solar_px = Face3D(solar_panel, '+y+z', np.array([0.05, 0., 0.]), name='+x solar panel', color='k')
+        face_mx = Face3D(large_face - solar_panel, '-y+z', np.array([-0.05, 0., 0.]), name='-x face', color='g')
+        solar_mx = Face3D(solar_panel, '-y+z', np.array([-0.05, 0., 0.]), name='-x solar panel', color='k')
 
-        face_py = Face3D(large_face - solar_panel, '-x+z', np.array([0., 0.05, 0.]), color='g')
-        solar_py = Face3D(solar_panel, '-x+z', np.array([0., 0.05, 0.]), color='k')
-        face_my = Face3D(large_face - solar_panel, '+x+z', np.array([0., -0.05, 0.]), color='g')
-        solar_my = Face3D(solar_panel, '+x+z', np.array([0., -0.05, 0.]), color='k')
+        face_py = Face3D(large_face - solar_panel, '-x+z', np.array([0., 0.05, 0.]), name='+y face', color='g')
+        solar_py = Face3D(solar_panel, '-x+z', np.array([0., 0.05, 0.]), name='+y solar panel', color='k')
+        face_my = Face3D(large_face - solar_panel, '+x+z', np.array([0., -0.05, 0.]), name='-y face', color='g')
+        solar_my = Face3D(solar_panel, '+x+z', np.array([0., -0.05, 0.]), name='-y solar panel', color='k')
 
-        face_pz = Face3D(small_face - solar_panel, '+x+y', np.array([0., 0., 0.1]), color='g')
-        solar_pz = Face3D(solar_panel, '+x+y', np.array([0., 0., 0.1]), color='k')
-        face_mz = Face3D(small_face - solar_panel, '-x+y', np.array([0., 0., -0.1]), color='g')
-        solar_mz = Face3D(solar_panel, '-x+y', np.array([0., 0., -0.1]), color='k')
+        face_pz = Face3D(small_face - solar_panel, '+x+y', np.array([0., 0., 0.1]), name='+z face', color='g')
+        solar_pz = Face3D(solar_panel, '+x+y', np.array([0., 0., 0.1]), name='+z solar panel', color='k')
+        face_mz = Face3D(small_face - solar_panel, '-x+y', np.array([0., 0., -0.1]), name='-z face', color='g')
+        solar_mz = Face3D(solar_panel, '-x+y', np.array([0., 0., -0.1]), name='-z solar panel', color='k')
 
         faces = [value for value in locals().values() if isinstance(value, Face3D)]
         super().__init__(faces)
 
 
 if __name__ == '__main__':
+
     cubesat = CubeSat()
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
