@@ -14,6 +14,8 @@ def aerodynamic_torque(v, rho):
     v: velocity of spacecraft relative to air in body frame in m/s
     rho: atmospheric density in kg/m^3
     """
+    # This function uses the equations for the free molecular flow dynamics
+    # (i.e. neglecting the affect of reemitted particles on the incident stream)
 
     vm = np.linalg.norm(v)
     ev = v * (1.0 / vm)
@@ -83,38 +85,13 @@ def aerodynamic_torque(v, rho):
 
 
 def solar_pressure(sun_vec, faces):
-    # find faces in the sun light
-    real_faces = []
-    if sun_vec[0] > 0:
-        real_faces.append(faces[0])
-    else:
-        real_faces.append(faces[1])
-    if sun_vec[1] > 0:
-        real_faces.append(faces[2])
-    else:
-        real_faces.append(faces[3])
-    if sun_vec[2] > 0:
-        real_faces.append(faces[4])
-    else:
-        real_faces.append(faces[5])
+    # TODO: absorption, and diffuse reflection (and redo this one)
+    net_torque = np.zeros(3)
+    for face in faces:
+        h = face.area_unit_vec @ sun_vec
 
-    tau = np.zeros(3)
+        if h > 0:
+            net_torque += a_solar_constant * face.area * (1 + face.face.reflection_coeff) * h * \
+                          (ut.cross_product_operator(face.centroid) @ -face.area_unit_vec)  # force is opposite to area
 
-    for face, sun in zip(real_faces, sun_vec):
-        if face.name[0] == 'z':
-            for feature in face.features:
-                c = a_solar_constant * feature.area * (1 + feature.q) * abs(sun)  # sin sun_vec is a unit vector, this works for the cosine
-                tau[0] += c * feature.centroid[1] * face.sign1  # this face.sign should be -1 for z+ and +1 for z-
-                tau[1] += c * feature.centroid[0] * face.sign2  # should be +1 for both
-        elif face.name[0] == 'x':
-            for feature in face.features:
-                c = a_solar_constant * feature.area * (1 + feature.q) * abs(sun)
-                tau[1] += c * feature.centroid[1] * face.sign1  # this face.sign should be -1 for x+ and +1 for x-
-                tau[2] += c * feature.centroid[0] * face.sign2  # should be +1 for both
-        elif face.name[0] == 'y':
-            for feature in face.features:
-                c = a_solar_constant * feature.area * (1 + feature.q) * abs(sun)
-                tau[0] += c * feature.centroid[1] * face.sign1  # should be +1 for y+ and -1 for y-
-                tau[2] += c * feature.centroid[0] * face.sign2  # should be +1 for both
-
-    return tau
+    return net_torque

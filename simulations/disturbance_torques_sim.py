@@ -9,26 +9,14 @@ import util as ut
 from skyfield.api import load, EarthSatellite
 from astropy.coordinates import get_sun
 from astropy.time import Time
-from CubeSat_model import Features, Faces, create_solar_panel, CubeSat
+from CubeSat_model_examples import CubeSatSolarPressureEx1
 
 time_step = 10
 end_time = 30000
 time = np.arange(0, end_time, time_step)
 
-# create the CubeSat faces
-solar_yplus = Features(create_solar_panel([-0.04, -0.09]), 1, color='k')
-solar_yminus = Features(create_solar_panel([-0.04, -0.09]), 1, color='k')
-solar_xplus = Features(create_solar_panel([-0.04, -0.09]), 1, color='k')
-solar_xminus = Features(create_solar_panel([-0.04, -0.09]), 1, color='k')
-
-zplus = Faces('z+', 0.1, 0.1, 0.6)
-zminus = Faces('z-', 0.1, 0.1, 0.6)
-xplus = Faces('x+', 0.2, 0.1, 0.6, features=solar_xplus)
-xminus = Faces('x-', 0.2, 0.1, 0.6, features=solar_xminus)
-yplus = Faces('y+', 0.2, 0.1, 0.6, features=solar_yplus)
-yminus = Faces('y-', 0.2, 0.1, 0.6, features=solar_yminus)
-
-cubesat = CubeSat([xplus, xminus, yplus, yminus, zplus, zminus])
+# create the CubeSat model
+cubesat = CubeSatSolarPressureEx1()
 
 # declare the bodies inertia, initial attitude, initial angular velocity, control torque constants, and max torque
 # limitation

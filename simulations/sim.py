@@ -33,7 +33,7 @@ mag_vec = mag_vec/np.linalg.norm(mag_vec)
 
 # The integration
 time_step = 0.01
-end_time = 300
+end_time = 30
 time = np.arange(0, end_time, time_step)
 states = np.zeros((len(time), 2, 3))
 controls = np.zeros((len(time), 3))
@@ -96,10 +96,12 @@ if __name__ == "__main__":
     _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
 
     from animation import AnimateAttitude, DrawingVectors
+    from CubeSat_model_examples import CubeSatEx1
     num = 100
     ref1 = DrawingVectors(dcm[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=4)
     ref2 = DrawingVectors(dcm_rn, 'axes', color=['r', 'y', 'b'], label=['Ref x', 'Ref y', 'Ref z'], length=4)
-    a = AnimateAttitude(dcm[::num], draw_vector=[ref1, ref2])
+    cubesat = CubeSatEx1()
+    a = AnimateAttitude(dcm[::num], draw_vector=[ref1, ref2], cubesat_model=cubesat)
     a.animate()
 
     plt.show()

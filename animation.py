@@ -109,6 +109,9 @@ class AnimateAttitude:
         #                   [x_mag, y_mag, z_mag],
         #                   [-x_mag, y_mag, z_mag]])
         self.cubesat_model = cubesat_model
+        self.facecolors = []
+        for face in cubesat_model.faces:
+            self.facecolors.append(face.color)
 
         # duplicate data so that animations can run more smoothly (because you dont have to do checks in the code all
         # the time)
@@ -149,11 +152,11 @@ class AnimateAttitude:
         #          [z[1], z[2], z[6], z[5]],
         #          [z[4], z[7], z[3], z[0]]]
         verts = []
-        for vert in self.cubesat_model.verts:
-            verts.append((self.dcm[i] @ np.array(vert).T).T.tolist())
+        for face in self.cubesat_model.faces:
+            verts.append((self.dcm[i] @ np.array(face.vertices)).T.tolist())
 
         # plot sides
-        ax.add_collection3d(Poly3DCollection(verts, facecolors=self.cubesat_model.facecolors, linewidths=1, edgecolors='r', alpha=.25))
+        ax.add_collection3d(Poly3DCollection(verts, facecolors=self.facecolors, linewidths=1, edgecolors='r', alpha=.25))
         # plot arrows
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
