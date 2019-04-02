@@ -97,7 +97,7 @@ for i in range(len(time) - 1):
     sun_vec_body[i] = dcm[i] @ sun_vec[i]
 
     # get disturbance torque
-    controls[i] = dt.solar_pressure_v2(sun_vec_body[i], cubesat.faces) * 100  # enhance torque by 100 for better test
+    controls[i] = dt.solar_pressure(sun_vec_body[i], cubesat.faces) * 100  # enhance torque by 100 for better test
 
     # propagate attitude state
     states[i+1] = it.rk4(st.state_dot, time_step, states[i], controls[i], inertia, inertia_inv)
