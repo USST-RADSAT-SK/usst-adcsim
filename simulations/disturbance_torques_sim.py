@@ -16,12 +16,10 @@ end_time = 30000
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
-cubesat = CubeSatSolarPressureEx1()
+cubesat = CubeSatSolarPressureEx1(inertia=np.diag([2*(10**-2), 4*(10**-2), 5*(10**-3)]), center_of_mass=np.array([0, 0, 0.01]))
 
 # declare the bodies inertia, initial attitude, initial angular velocity, control torque constants, and max torque
 # limitation
-inertia = np.diag([2*(10**-2), 4*(10**-2), 5*(10**-3)])
-inertia_inv = np.linalg.inv(inertia)
 omega0 = np.array([0, 0, 0])
 sigma0 = np.array([0, 0, 0])
 
@@ -97,10 +95,10 @@ for i in range(len(time) - 1):
     sun_vec_body[i] = dcm[i] @ sun_vec[i]
 
     # get disturbance torque
-    controls[i] = dt.solar_pressure(sun_vec_body[i], cubesat.faces) * 100  # enhance torque by 100 for better test
+    controls[i] = dt.gravity_gradient(ue, R0, cubesat) + dt.solar_pressure(sun_vec_body[i], cubesat)
 
     # propagate attitude state
-    states[i+1] = it.rk4(st.state_dot, time_step, states[i], controls[i], inertia, inertia_inv)
+    states[i+1] = it.rk4(st.state_dot, time_step, states[i], controls[i], cubesat.inertia, cubesat.inertia_inv)
 
     # do 'tidy' up things at the end of integration (needed for many types of attitude coordinates)
     states[i+1] = ic.mrp_switching(states[i+1])

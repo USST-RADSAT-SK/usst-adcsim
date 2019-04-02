@@ -3,11 +3,13 @@ import numpy as np
 from CubeSat_model import CubeSat
 
 a_solar_constant = 1366 / (3 * (10 ** 8))
+a_gravity_gradient_constant = 3 * 3.986004418 * (10**14)
+
+# Note: it appears that ut.cross_product_operator is a significant amount faster than using np.cross()
 
 
 def gravity_gradient(ue, r0, cubesat: CubeSat):
-    u = 3.986004418 * (10**14)
-    return (3*u/(r0**3)) * (ut.cross_product_operator(ue) @ cubesat.inertia @ ue)
+    return (a_gravity_gradient_constant/(r0**3)) * (ut.cross_product_operator(ue) @ cubesat.inertia @ ue)
 
 
 def aerodynamic_torque(v, rho, cubesat: CubeSat):
@@ -27,8 +29,10 @@ def aerodynamic_torque(v, rho, cubesat: CubeSat):
     for face in cubesat.faces:
         mu = np.dot(ev, face.normal)  # cosine of angle between velocity and surface normal
         if mu >= 0:
-            force = -rho * vm**2 * (0.4 * mu**2 * face.normal + 0.8 * mu * ev) * face.area  # units N, see eq'n 2-2 in NASA SP-8058 Spacecraft Aerodynamic Torques
-            net_torque += np.cross(face.centroid - cubesat.center_of_mass, force)  # units N.m
+            # units N, see eq'n 2-2 in NASA SP-8058 Spacecraft Aerodynamic Torques
+            force = -rho * vm**2 * (0.4 * mu**2 * face.normal + 0.8 * mu * ev) * \
+                    face.area  # units N, see eq'n 2-2 in NASA SP-8058 Spacecraft Aerodynamic Torques
+            net_torque += ut.cross_product_operator(face.centroid - cubesat.center_of_mass) @ force  # units N.m
 
     return net_torque
 
@@ -41,6 +45,7 @@ def solar_pressure(sun_vec, cubesat: CubeSat):
 
         if h > 0:
             net_torque += a_solar_constant * face.area * (1 + face.reflection_coeff) * h * \
-                          (ut.cross_product_operator(face.centroid - cubesat.center_of_mass) @ -face.normal)  # force is opposite to area
+                          (ut.cross_product_operator(face.centroid - cubesat.center_of_mass) @
+                           -face.normal)  # force is opposite to area
 
     return net_torque
