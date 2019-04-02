@@ -5,7 +5,7 @@ from typing import Union, List
 
 
 class Face2D:
-    def __init__(self, vertices: np.ndarray, sigma_n: float=0.8, sigma_t: float=0.8):
+    def __init__(self, vertices: np.ndarray, sigma_n: float=0.8, sigma_t: float=0.8, reflection_coeff: float=0.6):
         """
         Parameters
         ----------
@@ -29,6 +29,7 @@ class Face2D:
 
         self._sigma_n = sigma_n
         self._sigma_t = sigma_t
+        self._reflection_coeff = reflection_coeff
 
     @property
     def vertices(self):
@@ -54,11 +55,17 @@ class Face2D:
     def sigma_t(self):
         return self._sigma_t
 
+    @property
+    def reflection_coeff(self):
+        return self._reflection_coeff
+
     def __add__(self, other):
         if isinstance(other, np.ndarray):
-            return Face2D(self.vertices + other.reshape(2, 1), sigma_n=self.sigma_n, sigma_t=self.sigma_t)
+            return Face2D(self.vertices + other.reshape(2, 1), sigma_n=self.sigma_n, sigma_t=self.sigma_t,
+                          reflection_coeff=self.reflection_coeff)
         elif isinstance(other, Face2D):
-            return Face2D(np.concatenate((self.vertices, other.vertices, self.vertices[:, :1]), axis=1), sigma_n=self.sigma_n, sigma_t=self.sigma_t)
+            return Face2D(np.concatenate((self.vertices, other.vertices, self.vertices[:, :1]), axis=1),
+                          sigma_n=self.sigma_n, sigma_t=self.sigma_t, reflection_coeff=self.reflection_coeff)
         else:
             raise TypeError(f'Cannot add object of type {type(other)} to Face2D object')
 
@@ -74,9 +81,11 @@ class Face2D:
 
     def __sub__(self, other):
         if isinstance(other, np.ndarray):
-            return Face2D(self.vertices - other.reshape(2, 1), sigma_n=self.sigma_n, sigma_t=self.sigma_t)
+            return Face2D(self.vertices - other.reshape(2, 1), sigma_n=self.sigma_n, sigma_t=self.sigma_t,
+                          reflection_coeff=self.reflection_coeff)
         elif isinstance(other, Face2D):
-            return Face2D(np.concatenate((self.vertices, other.vertices[:, ::-1], self.vertices[:, :1]), axis=1), sigma_n=self.sigma_n, sigma_t=self.sigma_t)
+            return Face2D(np.concatenate((self.vertices, other.vertices[:, ::-1], self.vertices[:, :1]), axis=1),
+                          sigma_n=self.sigma_n, sigma_t=self.sigma_t, reflection_coeff=self.reflection_coeff)
         else:
             raise TypeError(f'Cannot subtract object of type {type(other)} from Face2D object')
 
@@ -133,6 +142,10 @@ class Face3D:
     @property
     def area(self):
         return self._area
+
+    @property
+    def area_unit_vec(self):
+        return self._area_unit_vec
 
     @property
     def centroid(self):
@@ -217,56 +230,47 @@ class Face3D:
         self._vertices += self.translation
         self._centroid += self.translation.squeeze()
 
+        # get the area unit vector
+        self._area_unit_vec = self.orientation @ np.array([0, 0, 1])  # [0, 0, 1] is the reference we started at
+
 
 class Polygons3D:
     def __init__(self, faces: List[Face3D]):
         self._faces = faces
 
-    def plot(self, ax: plt.Axes):
+    def plot(self):
+        max = 0
+        min = 0
+        for face in self.faces:
+            max = np.max([face.vertices.max(), max])
+            min = np.min([face.vertices.min(), min])
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.set_xlim(min*2, max*2)
+        ax.set_ylim(min*2, max*2)
+        ax.set_zlim(min*2, max*2)
+
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+
         vertices = [f.vertices.T for f in self._faces]
         colors = [f.color for f in self._faces]
         poly = Poly3DCollection(vertices, facecolors=colors)
         ax.add_collection(poly)
+
 
     @property
     def faces(self):
         return self._faces
 
 
-class CubeSat(Polygons3D):
-    def __init__(self):
-        large_face = Face2D(np.array([[-0.05, -0.1], [0.05, -0.1], [0.05, 0.1], [-0.05, 0.1], [-0.05, -0.1]]).T)
-        small_face = Face2D(np.array([[-0.05, -0.05], [0.05, -0.05], [0.05, 0.05], [-0.05, 0.05], [-0.05, -0.05]]).T)
-        solar_panel = Face2D(np.array([[-0.04, -0.02], [0.04, -0.02], [0.04, 0.01], [0.03, 0.02], [-0.03, 0.02], [-0.04, 0.01], [-0.04, -0.02]]).T)
-
-        face_px = Face3D(large_face - solar_panel, '+y+z', np.array([0.05, 0., 0.]), name='+x face', color='g')
-        solar_px = Face3D(solar_panel, '+y+z', np.array([0.05, 0., 0.]), name='+x solar panel', color='k')
-        face_mx = Face3D(large_face - solar_panel, '-y+z', np.array([-0.05, 0., 0.]), name='-x face', color='g')
-        solar_mx = Face3D(solar_panel, '-y+z', np.array([-0.05, 0., 0.]), name='-x solar panel', color='k')
-
-        face_py = Face3D(large_face - solar_panel, '-x+z', np.array([0., 0.05, 0.]), name='+y face', color='g')
-        solar_py = Face3D(solar_panel, '-x+z', np.array([0., 0.05, 0.]), name='+y solar panel', color='k')
-        face_my = Face3D(large_face - solar_panel, '+x+z', np.array([0., -0.05, 0.]), name='-y face', color='g')
-        solar_my = Face3D(solar_panel, '+x+z', np.array([0., -0.05, 0.]), name='-y solar panel', color='k')
-
-        face_pz = Face3D(small_face - solar_panel, '+x+y', np.array([0., 0., 0.1]), name='+z face', color='g')
-        solar_pz = Face3D(solar_panel, '+x+y', np.array([0., 0., 0.1]), name='+z solar panel', color='k')
-        face_mz = Face3D(small_face - solar_panel, '-x+y', np.array([0., 0., -0.1]), name='-z face', color='g')
-        solar_mz = Face3D(solar_panel, '-x+y', np.array([0., 0., -0.1]), name='-z solar panel', color='k')
-
-        faces = [value for value in locals().values() if isinstance(value, Face3D)]
-        super().__init__(faces)
-
-
 if __name__ == '__main__':
+    from CubeSat_model_examples import CubeSatEx1
 
-    cubesat = CubeSat()
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.set_xlim(-0.2, 0.2)
-    ax.set_ylim(-0.2, 0.2)
-    ax.set_zlim(-0.2, 0.2)
-    cubesat.plot(ax)
+    cubesat = CubeSatEx1()
+    cubesat.plot()
     plt.show()
     exit()
 
@@ -284,15 +288,5 @@ if __name__ == '__main__':
 
     poly_3d = Polygons3D([face_3d])
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.set_xlim(-4, 4)
-    ax.set_ylim(-4, 4)
-    ax.set_zlim(-4, 4)
-    poly_3d.plot(ax)
+    poly_3d.plot()
     plt.show()
-
-
-
-
-
