@@ -1,8 +1,8 @@
 import numpy as np
-from CubeSat_model import Polygons3D, Face2D, Face3D
+from CubeSat_model import CubeSat, Face2D, Face3D
 
 
-class CubeSatEx1(Polygons3D):
+class CubeSatEx1(CubeSat):
     def __init__(self):
         large_face = Face2D(np.array([[-0.05, -0.1], [0.05, -0.1], [0.05, 0.1], [-0.05, 0.1], [-0.05, -0.1]]).T)
         small_face = Face2D(np.array([[-0.05, -0.05], [0.05, -0.05], [0.05, 0.05], [-0.05, 0.05], [-0.05, -0.05]]).T)
@@ -26,10 +26,10 @@ class CubeSatEx1(Polygons3D):
         solar_mz = Face3D(solar_panel, '-x+y', np.array([0., 0., -0.1]), name='-z solar panel', color='k')
 
         faces = [value for value in locals().values() if isinstance(value, Face3D)]
-        super().__init__(faces)
+        super().__init__(faces, center_of_mass=np.zeros(3), inertia=np.diag([2e-3, 2e-3, 8e-3]))
 
 
-class CubeSatSolarPressureEx1(Polygons3D):
+class CubeSatSolarPressureEx1(CubeSat):
     def __init__(self):
         large_face = Face2D(np.array([[-0.05, -0.1], [0.05, -0.1], [0.05, 0.1], [-0.05, 0.1], [-0.05, -0.1]]).T,
                             reflection_coeff=0.6)
@@ -53,4 +53,4 @@ class CubeSatSolarPressureEx1(Polygons3D):
         face_mz = Face3D(small_face, '-x+y', np.array([0., 0., -0.1]), name='-z face', color='C5')
 
         faces = [value for value in locals().values() if isinstance(value, Face3D)]
-        super().__init__(faces)
+        super().__init__(faces, center_of_mass=np.zeros(3), inertia=np.diag([2e-3, 2e-3, 8e-3]))
