@@ -144,10 +144,6 @@ class Face3D:
         return self._area
 
     @property
-    def area_unit_vec(self):
-        return self._area_unit_vec
-
-    @property
     def centroid(self):
         return self._centroid
 
@@ -196,6 +192,18 @@ class Face3D:
     def color(self):
         return self._color
 
+    @property
+    def sigma_n(self):
+        return self.face.sigma_n
+
+    @property
+    def sigma_t(self):
+        return self.face.sigma_t
+
+    @property
+    def reflection_coeff(self):
+        return self.face.reflection_coeff
+
     def _unit_vector_from_string(self, string):
         if string[1] == 'x':
             v = np.array([1., 0., 0.])
@@ -230,9 +238,6 @@ class Face3D:
         self._vertices += self.translation
         self._centroid += self.translation.squeeze()
 
-        # get the area unit vector
-        self._area_unit_vec = self.orientation @ np.array([0, 0, 1])  # [0, 0, 1] is the reference we started at
-
 
 class Polygons3D:
     def __init__(self, faces: List[Face3D]):
@@ -260,10 +265,24 @@ class Polygons3D:
         poly = Poly3DCollection(vertices, facecolors=colors)
         ax.add_collection(poly)
 
-
     @property
     def faces(self):
         return self._faces
+
+
+class CubeSat(Polygons3D):
+    def __init__(self, faces: List[Face3D], center_of_mass: np.ndarray, inertia: np.ndarray):
+        self._com = center_of_mass
+        self._inertia = inertia
+        super().__init__(faces)
+
+    @property
+    def center_of_mass(self):
+        return self._com
+
+    @property
+    def inertia(self):
+        return self._inertia
 
 
 if __name__ == '__main__':
