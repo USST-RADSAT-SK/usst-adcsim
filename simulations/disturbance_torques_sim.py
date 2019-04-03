@@ -6,76 +6,77 @@ import integrators as it
 import integral_considerations as ic
 import disturbance_torques as dt
 import util as ut
-from skyfield.api import load, EarthSatellite
+from skyfield.api import load, EarthSatellite, utc
 from astropy.coordinates import get_sun
 from astropy.time import Time
 from CubeSat_model_examples import CubeSatSolarPressureEx1
+from datetime import datetime, timedelta
 
+# declare time step for integration
 time_step = 10
 end_time = 30000
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
-cubesat = CubeSatSolarPressureEx1(inertia=np.diag([2*(10**-2), 4*(10**-2), 5*(10**-3)]), center_of_mass=np.array([0, 0, 0.01]))
+cubesat = CubeSatSolarPressureEx1(inertia=np.diag([2*(10**-2), 4*(10**-2), 5*(10**-3)]),
+                                  center_of_mass=np.array([0, 0, 0.01]))
 
-# declare the bodies inertia, initial attitude, initial angular velocity, control torque constants, and max torque
-# limitation
-omega0 = np.array([0, 0, 0])
-sigma0 = np.array([0, 0, 0])
-
-# declare orbit stuff
-line1 = '1 44031U 98067PX  19083.14584174  .00005852  00000-0  94382-4 0  9997'
-line2 = '2 44031  51.6393  63.5548 0003193 165.0023 195.1063 15.54481029  8074'
-satellite = EarthSatellite(line1, line2)
-ts = load.timescale()
-day = 24
-hour = 18
-minute = 35
-second = 0
+# declare memory
+states = np.zeros((len(time), 2, 3))
+dcm = np.zeros((len(time), 3, 3))
+controls = np.zeros((len(time), 3))
+nadir = np.zeros((len(time), 3))
+sun_vec = np.zeros((len(time), 3))
+sun_vec_body = np.zeros((len(time), 3))
 lons = np.zeros(len(time))
 lats = np.zeros(len(time))
 alts = np.zeros(len(time))
 positions = np.zeros((len(time), 3))
 velocities = np.zeros((len(time), 3))
-t = ts.utc(2019, 3, day, hour, minute, second)
+
+# declare all orbit stuff
+line1 = '1 44031U 98067PX  19083.14584174  .00005852  00000-0  94382-4 0  9997'
+line2 = '2 44031  51.6393  63.5548 0003193 165.0023 195.1063 15.54481029  8074'
+satellite = EarthSatellite(line1, line2)
+ts = load.timescale()
+time_track = datetime(2019, 3, 24, 18, 35, 1, tzinfo=utc)
+t = ts.utc(time_track)
 geo = satellite.at(t)
+subpoint = geo.subpoint()
+
+# declare initial conditions
 positions[0] = geo.position.m
 velocities[0] = geo.velocity.km_per_s * 1000
-subpoint = geo.subpoint()
 lons[0] = subpoint.longitude.radians * 180 / np.pi
 lats[0] = subpoint.latitude.radians * 180 / np.pi
 alts[0] = subpoint.elevation.m
-
 # initialize attitude so that z direction of body frame is aligned with nadir
 dcm0 = ut.initial_align_gravity_stabilization(positions[0], velocities[0])
 sigma0 = tr.dcm_to_mrp(dcm0)
 # initialize angular velocity so that it is approximately the speed of rotation around the earth
 omega0_body = np.array([0, -0.00113, 0])
 omega0 = dcm0.T @ omega0_body
-
-# The integration
-states = np.zeros((len(time), 2, 3))
-controls = np.zeros((len(time), 3))
 states[0] = [sigma0, omega0]
-dcm = np.zeros((len(time), 3, 3))
 dcm[0] = tr.mrp_to_dcm(states[0][0])
-nadir = np.zeros((len(time), 3))
-sun_vec = np.zeros((len(time), 3))
-sun_vec_body = np.zeros((len(time), 3))
+
+# the integration
 for i in range(len(time) - 1):
-    print(i)
+    # get unit vector towards nadir in body frame (for gravity gradient torque)
+    R0 = np.linalg.norm(positions[i])
+    nadir[i] = -positions[i]/R0
+    ue = dcm[i] @ nadir[i]
+
+    # get sun vector in GCRS
+    sun_vec[i] = get_sun(Time(time_track)).cartesian.xyz.value
+    sun_vec[i] = sun_vec[i]/np.linalg.norm(sun_vec[i])
+    sun_vec_body[i] = dcm[i] @ sun_vec[i]
+
+    # get disturbance torque
+    controls[i] = dt.gravity_gradient(ue, R0, cubesat) + dt.solar_pressure(sun_vec_body[i], cubesat)
+
     # propagate orbit
-    second += 1*time_step
-    if second >= 60:
-        minute += 1
-        second = 0
-    if minute >= 60:
-        hour += 1
-        minute = 0
-    if hour >= 24:
-        day += 1
-        hour = 0
-    t = ts.utc(2019, 3, day, hour, minute, second)
+    time_track = time_track + timedelta(seconds=time_step)
+    t = ts.utc(time_track)
     geo = satellite.at(t)
     positions[i+1] = geo.position.m
     velocities[i+1] = geo.velocity.km_per_s * 1000
@@ -83,19 +84,6 @@ for i in range(len(time) - 1):
     lons[i+1] = subpoint.longitude.radians * 180/np.pi
     lats[i+1] = subpoint.latitude.radians * 180/np.pi
     alts[i+1] = subpoint.elevation.m
-
-    # get unit vector towards nadir in body frame (for gravity gradient torque)
-    R0 = np.linalg.norm(positions[i])
-    nadir[i] = -positions[i]/R0
-    ue = dcm[i] @ nadir[i]
-
-    # get sun vector in GCRS
-    sun_vec[i] = get_sun(Time(f'2019-03-{day} {hour}:{minute}:{second}')).cartesian.xyz.value
-    sun_vec[i] = sun_vec[i]/np.linalg.norm(sun_vec[i])
-    sun_vec_body[i] = dcm[i] @ sun_vec[i]
-
-    # get disturbance torque
-    controls[i] = dt.gravity_gradient(ue, R0, cubesat) + dt.solar_pressure(sun_vec_body[i], cubesat)
 
     # propagate attitude state
     states[i+1] = it.rk4(st.state_dot, time_step, states[i], controls[i], cubesat.inertia, cubesat.inertia_inv)
@@ -120,25 +108,8 @@ if __name__ == "__main__":
 
     # _plot(omegas, 'angular velocity components', 'angular velocity (rad/s)')
     # _plot(sigmas, 'mrp components', 'mrp component values')
-
-    # get prv's
-    def get_prvs(data):
-        angle = np.zeros(len(time))
-        e = np.zeros((len(time), 3))
-        for i in range(len(time)):
-            angle[i], e[i] = tr.dcm_to_prv(tr.mrp_to_dcm(data[i]))
-        return angle, e
-
-
-    angle, e = get_prvs(sigmas)
-
-    # The prv's are obtained and plotted here because they are an intuitive attitude coordinate system
-    # and the prv angle as a function of time is the best way to visualize your attitude error.
-    # _plot(angle, 'prv angle reference', 'prv angle (rad)')
-
     # plot the control torque
     # _plot(controls, 'control torque components', 'Torque (Nm)')
-
     # plot the mrp magnitude
     # _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
 
@@ -148,7 +119,8 @@ if __name__ == "__main__":
     vec2 = DrawingVectors(sun_vec[::num], 'single', color='y', label='sun', length=0.5)
     ref1 = DrawingVectors(dcm[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=0.2)
     plot1 = AdditionalPlots(time[::num], controls[::num], labels=['X', 'Y', 'Z'])
-    a = AnimateAttitude(dcm[::num], draw_vector=[vec1, vec2, ref1], additional_plots=plot1, cubesat_model=cubesat)
+    plot2 = AdditionalPlots(lons[::num], lats[::num], groundtrack=True)
+    a = AnimateAttitude(dcm[::num], draw_vector=[vec1, vec2, ref1], additional_plots=plot2, cubesat_model=cubesat)
     a.animate_and_plot()
 
     plt.show()
