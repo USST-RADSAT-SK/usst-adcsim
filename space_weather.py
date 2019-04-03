@@ -38,7 +38,8 @@ def create_space_weather_netcdf(url_string='http://celestrak.com/SpaceData/SW-La
         line_str = line_byte.decode('utf-8')
         values = re.findall(r'[\d.]+', line_str)
         if not len(values) == 33:  # some lines near the end are missing values, skip them for now
-            # TODO: be smart and don't skip them because the f107 and ap values are still there
+            # TODO: be smart and don't skip them because in some lines the f107 and ap values are still there
+            #   but some other values are missing -- these are lines near the end of the time range
             #   if we wanted to do this the lines would have to be read one character at a time
             #   in order to locate the missing values
             line_byte = data.readline()
@@ -72,29 +73,10 @@ def create_space_weather_netcdf(url_string='http://celestrak.com/SpaceData/SW-La
     #     line_byte = data.readline()
 
     data.close()
-    # convert to numpy arrays
-    # date = np.array(date)
-    # bsrn = np.array(bsrn)
-    # nd = np.array(nd)
-    # kp = np.array(kp)
-    # kp_sum = np.array(kp_sum)
-    # ap = np.array(ap)
-    # ap_avg = np.array(ap_avg)
-    # cp = np.array(cp)
-    # c9 = np.array(c9)
-    # isn = np.array(isn)
-    # f107_adj = np.array(f107_adj)
-    # q_flux = np.array(q_flux)
-    # ctr81_adj = np.array(ctr81_adj)
-    # lst81_adj = np.array(lst81_adj)
-    # f107_obs = np.array(f107_obs)
-    # ctr81_obs = np.array(ctr81_obs)
-    # lst81_obs = np.array(lst81_obs)
-    # three_hour_interval = np.array(['0000-0300', '0300-0600', '0600-0900', '0900-1200',
-    #                                 '1200-1500', '1500-1800', '1800-2100', '2100-0000'])
     three_hour_interval = ['0000-0300', '0300-0600', '0600-0900', '0900-1200',
                            '1200-1500', '1500-1800', '1800-2100', '2100-0000']
 
+    # TODO: add units and descriptions to the dateset
     cssi_space_weather = xr.Dataset(
         data_vars={'bsrn': ('date', bsrn),
                    'nd': ('date', nd),
@@ -110,7 +92,7 @@ def create_space_weather_netcdf(url_string='http://celestrak.com/SpaceData/SW-La
                    'ctr81_adj': ('date', ctr81_adj),
                    'lst81_adj': ('date', lst81_adj),
                    'f107_obs': ('date', f107_obs),
-                   'ctr81_ob': ('date', ctr81_obs),
+                   'ctr81_obs': ('date', ctr81_obs),
                    'lst81_obs': ('date', lst81_obs)},
         coords={'date': date,
                 'three_hour_interval': three_hour_interval})

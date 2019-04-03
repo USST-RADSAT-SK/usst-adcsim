@@ -11,7 +11,7 @@ from nrlmsise_00 import *
 
 
 class AirDensityModel:
-    def __init__(self, path_to_space_weather_netcdf='./cssi_space_weather.nc'):
+    def __init__(self, path_to_space_weather_netcdf='./cssi_space_weather.nc', update_netcdf=False):
         """
         Parameters
         ----------
@@ -20,13 +20,13 @@ class AirDensityModel:
             i.e. /path/to/file/cssi_space_weather.nc
             By default, looks for the file in the current directory, and creates a new one if it can not be found.
         """
-        if not os.path.isfile(path_to_space_weather_netcdf):
-            # create the space weather netcdf if it can't be found
+        if (not os.path.isfile(path_to_space_weather_netcdf)) or update_netcdf:
+            # create the space weather netcdf if it can't be found, or if user wants to update it
             create_space_weather_netcdf('http://celestrak.com/SpaceData/SW-Last5Years.txt',
                                         path_to_space_weather_netcdf)
         self._space_dataset = xr.open_dataset(path_to_space_weather_netcdf)
 
-    def air_density(self, year=0, doy=0, sec=0.0, alt=0.0, g_lat=0.0, g_long=0.0):
+    def air_mass_density(self, year=0, doy=0, sec=0.0, alt=0.0, g_lat=0.0, g_long=0.0):
         """
         Parameters
         ----------
@@ -46,12 +46,13 @@ class AirDensityModel:
         Returns
         -------
         float
+             air mass density in g/cm3
         """
         date = self._get_date(year, doy)
         # 81 day average of F10.7 flux (centered on doy)
-        f107A = self._space_dataset.ctr81_adj.sel(date=date)  # TODO: should we be using the adjusted or observed value?
+        f107A = self._space_dataset.ctr81_obs.sel(date=date)  # TODO: should we be using the adjusted or observed value?
         # daily F10.7 flux for previous day
-        f107 = self._space_dataset.f107_adj.sel(date=date)  # adjusted or observed? should this be from the previous day?
+        f107 = self._space_dataset.f107_obs.sel(date=date)  # adjusted or observed? should this be from the previous day?
         # magnetic index(daily)
         ap = self._space_dataset.ap_avg.sel(date=date)  # use average value from the day
         # average magnetic index?
@@ -71,7 +72,7 @@ class AirDensityModel:
         # call the model
         gtd7(input, flags, output)
 
-        mass_density = output.d[5]  # total mass density in GM/CM3
+        mass_density = output.d[5]  # total mass density in g/cm3
 
         return mass_density
 
