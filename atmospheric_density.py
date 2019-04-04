@@ -55,11 +55,11 @@ class AirDensityModel:
         else:
             date = self._get_date(year, doy)
         # 81 day average of F10.7 flux (centered on doy)
-        f107A = self._space_dataset.ctr81_obs.sel(date=date)  # TODO: should we be using the adjusted or observed value?
+        f107A = self._space_dataset.ctr81_obs.sel(date=date).item()  # TODO: should we be using the adjusted or observed value?
         # daily F10.7 flux for previous day
-        f107 = self._space_dataset.f107_obs.sel(date=date)  # adjusted or observed? should this be from the previous day?
+        f107 = self._space_dataset.f107_obs.sel(date=date).item()  # adjusted or observed? should this be from the previous day?
         # magnetic index(daily)
-        ap = self._space_dataset.ap_avg.sel(date=date)  # use average value from the day
+        ap = self._space_dataset.ap_avg.sel(date=date).item()  # use average value from the day
         # average magnetic index?
         ap_a = ap  # is ap_a the average value?
 
