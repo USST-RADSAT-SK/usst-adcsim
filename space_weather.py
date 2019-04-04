@@ -31,36 +31,31 @@ def create_space_weather_netcdf(url_string='http://celestrak.com/SpaceData/SW-La
     ctr81_obs = []
     lst81_obs = []
 
+    datas = [[] for i in range(33)]
+
     while not (b'BEGIN OBSERVED' in data.readline()):
         pass  # loops until we get to the line where data starts
     line_byte = data.readline()  # grab the first line
+
+    # get starting indexes for the first line
+    line_str = line_byte.decode('utf-8')
+    p = re.compile("[\d.] ")
+    indexes = []
+    for m in p.finditer(line_str):
+        indexes.append(m.start())
+    indexes.append(129)
+
     while not (b'END OBSERVED' in line_byte):
         line_str = line_byte.decode('utf-8')
         values = re.findall(r'[\d.]+', line_str)
-        if not len(values) == 33:  # some lines near the end are missing values, skip them for now
-            # TODO: be smart and don't skip them because in some lines the f107 and ap values are still there
-            #   but some other values are missing -- these are lines near the end of the time range
-            #   if we wanted to do this the lines would have to be read one character at a time
-            #   in order to locate the missing values
-            line_byte = data.readline()
-            continue
-        date.append(dt.datetime(int(values[0]), int(values[1]), int(values[2])))
-        bsrn.append(int(values[3]))
-        nd.append(int(values[4]))
-        kp.append(np.array([int(v) for v in values[5:13]]))
-        kp_sum.append(int(values[13]))
-        ap.append(np.array([int(v) for v in values[14:22]]))
-        ap_avg.append(int(values[22]))
-        cp.append(float(values[23]))
-        c9.append(int(values[24]))
-        isn.append(int(values[25]))
-        f107_adj.append(float(values[26]))
-        q_flux.append(int(values[27]))
-        ctr81_adj.append(float(values[28]))
-        lst81_adj.append(float(values[29]))
-        f107_obs.append(float(values[30]))
-        ctr81_obs.append(float(values[31]))
-        lst81_obs.append(float(values[32]))
+
+        k = 0
+        for i, val in enumerate(indexes):
+            if line_str[val] == ' ':
+                datas[i].append(' ')
+                continue
+            datas[i].append(values[k])
+            k += 1
 
         line_byte = data.readline()  # read in next line
 
@@ -71,6 +66,35 @@ def create_space_weather_netcdf(url_string='http://celestrak.com/SpaceData/SW-La
     # while not (b'END DAILY PREDICTED' in line_byte):
     #
     #     line_byte = data.readline()
+
+    for i in range(len(datas[0])):
+        date.append(dt.datetime(int(datas[0][i]), int(datas[1][i]), int(datas[2][i])))
+        bsrn.append(int(datas[3][i]))
+        nd.append(int(datas[4][i]))
+        kp.append(np.array([int(v[i]) for v in datas[5:13]]))
+        kp_sum.append(int(datas[13][i]))
+        ap.append(np.array([int(v[i]) for v in datas[14:22]]))
+        ap_avg.append(int(datas[22][i]))
+        if datas[23][i] == ' ':
+            cp.append(np.nan)
+        else:
+            cp.append(float(datas[23][i]))
+        if datas[24][i] == ' ':
+            c9.append(np.nan)
+        else:
+            c9.append(int(datas[24][i]))
+        if datas[25][i] == ' ':
+            isn.append(np.nan)
+        else:
+            isn.append(int(datas[25][i]))
+        f107_adj.append(float(datas[26][i]))
+        q_flux.append(int(datas[27][i]))
+        ctr81_adj.append(float(datas[28][i]))
+        lst81_adj.append(float(datas[29][i]))
+        f107_obs.append(float(datas[30][i]))
+        ctr81_obs.append(float(datas[31][i]))
+        lst81_obs.append(float(datas[32][i]))
+
 
     data.close()
     three_hour_interval = ['0000-0300', '0300-0600', '0600-0900', '0900-1200',

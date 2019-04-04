@@ -11,15 +11,19 @@ from astropy.coordinates import get_sun
 from astropy.time import Time
 from CubeSat_model_examples import CubeSatSolarPressureEx1
 from datetime import datetime, timedelta
+from atmospheric_density import AirDensityModel
 
 # declare time step for integration
 time_step = 10
-end_time = 30000
+end_time = 10000
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
 cubesat = CubeSatSolarPressureEx1(inertia=np.diag([2*(10**-2), 4*(10**-2), 5*(10**-3)]),
                                   center_of_mass=np.array([0, 0, 0.01]))
+
+# load class to get atmospheric density
+air_density = AirDensityModel()
 
 # declare memory
 states = np.zeros((len(time), 2, 3))
@@ -61,18 +65,23 @@ dcm[0] = tr.mrp_to_dcm(states[0][0])
 
 # the integration
 for i in range(len(time) - 1):
+    print(i)
     # get unit vector towards nadir in body frame (for gravity gradient torque)
     R0 = np.linalg.norm(positions[i])
     nadir[i] = -positions[i]/R0
     ue = dcm[i] @ nadir[i]
 
-    # get sun vector in GCRS
+    # get sun vector in GCRS (for solar pressure torque)
     sun_vec[i] = get_sun(Time(time_track)).cartesian.xyz.value
     sun_vec[i] = sun_vec[i]/np.linalg.norm(sun_vec[i])
     sun_vec_body[i] = dcm[i] @ sun_vec[i]
 
+    # get atmospheric density and velocity vector in body frame (for aerodynamic torque)
+    density = air_density.air_mass_density(date=time_track, alt=alts[i]/1000, g_lat=lats[i], g_long=lons[i])
+    vel_body = dcm[i] @ velocities[i]
+
     # get disturbance torque
-    controls[i] = dt.gravity_gradient(ue, R0, cubesat) + dt.solar_pressure(sun_vec_body[i], cubesat)
+    controls[i] = dt.gravity_gradient(ue, R0, cubesat) + dt.solar_pressure(sun_vec_body[i], cubesat) + dt.aerodynamic_torque(vel_body, density, cubesat)
 
     # propagate orbit
     time_track = time_track + timedelta(seconds=time_step)
@@ -117,10 +126,11 @@ if __name__ == "__main__":
     num = 10
     vec1 = DrawingVectors(nadir[::num], 'single', color='b', label='nadir', length=0.5)
     vec2 = DrawingVectors(sun_vec[::num], 'single', color='y', label='sun', length=0.5)
+    vec3 = DrawingVectors(velocities[::num], 'single', color='r', label='velocity', length=0.5)
     ref1 = DrawingVectors(dcm[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=0.2)
     plot1 = AdditionalPlots(time[::num], controls[::num], labels=['X', 'Y', 'Z'])
     plot2 = AdditionalPlots(lons[::num], lats[::num], groundtrack=True)
-    a = AnimateAttitude(dcm[::num], draw_vector=[vec1, vec2, ref1], additional_plots=plot2, cubesat_model=cubesat)
+    a = AnimateAttitude(dcm[::num], draw_vector=[vec1, vec2, vec3, ref1], additional_plots=plot2, cubesat_model=cubesat)
     a.animate_and_plot()
 
     plt.show()

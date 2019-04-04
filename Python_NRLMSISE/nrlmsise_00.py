@@ -28,7 +28,7 @@ This is the main program that contains all the functions
 """
 
 
-from nrlmsise_00_header import *
+from Python_NRLMSISE.nrlmsise_00_header import *
 from math import *
 
 """
@@ -64,7 +64,7 @@ meso_tgn3 = [0.0 for _ in range(2)];
 #/* POWER7 */
 #/* LOWER7 */
 #Dont to need to do anyt of the externs, they are all here
-from nrlmsise_00_data import *
+from Python_NRLMSISE.nrlmsise_00_data import *
 
 
 #/* LPOLY */

@@ -5,9 +5,8 @@ import numpy as np
 import datetime as dt
 from space_weather import create_space_weather_netcdf
 
-sys.path.insert(0, './Python-NRLMSISE-00/')
-from nrlmsise_00_header import *
-from nrlmsise_00 import *
+from Python_NRLMSISE.nrlmsise_00 import *
+from Python_NRLMSISE.nrlmsise_00_header import *
 
 
 class AirDensityModel:
@@ -26,7 +25,7 @@ class AirDensityModel:
                                         path_to_space_weather_netcdf)
         self._space_dataset = xr.open_dataset(path_to_space_weather_netcdf)
 
-    def air_mass_density(self, year=0, doy=0, sec=0.0, alt=0.0, g_lat=0.0, g_long=0.0):
+    def air_mass_density(self, year=0, doy=0, sec=0.0, alt=0.0, g_lat=0.0, g_long=0.0, date=None):
         """
         Parameters
         ----------
@@ -46,9 +45,15 @@ class AirDensityModel:
         Returns
         -------
         float
-             air mass density in g/cm3
+             air mass density in kg/m3
         """
-        date = self._get_date(year, doy)
+        if date is not None:
+            doy = date.timetuple().tm_yday
+            sec = (date - date.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
+            year = date.year
+            date = date.date()
+        else:
+            date = self._get_date(year, doy)
         # 81 day average of F10.7 flux (centered on doy)
         f107A = self._space_dataset.ctr81_obs.sel(date=date)  # TODO: should we be using the adjusted or observed value?
         # daily F10.7 flux for previous day
@@ -61,6 +66,7 @@ class AirDensityModel:
         output = nrlmsise_output()
         # note: lst is the local apparent solar time
         # I'm using the recommended formula in nrlmsise_00_header.py to calculate it
+
         input = nrlmsise_input(year=year, doy=doy, sec=sec, alt=alt, g_lat=g_lat, g_long=g_long,
                                lst=(sec/3600 + g_long/15), f107A=f107A, f107=f107, ap=ap, ap_a=ap_a)
         flags = nrlmsise_flags()
@@ -74,7 +80,7 @@ class AirDensityModel:
 
         mass_density = output.d[5]  # total mass density in g/cm3
 
-        return mass_density
+        return mass_density * 1000  # convert to kg/m3
 
     def _get_date(self, year, doy):
         """
@@ -129,3 +135,23 @@ class AirDensityModel:
                 return True
         else:
             return False
+
+
+if __name__ == "__main__":
+    from skyfield.api import utc
+    air = AirDensityModel()
+
+    year = 2019
+    month = 3
+    day = 24
+    hour = 18
+    minute = 35
+    second = 1
+
+    day_of_year = 31 + 28 + day
+    second_of_day = second + minute*60 + hour*60*60
+
+    time_track = dt.datetime(year, month, day, hour, minute, second, tzinfo=utc)
+
+    print(air.air_mass_density(year, day_of_year, second_of_day, 400, 10, 10))
+    print(air.air_mass_density(date=time_track, alt=400, g_lat=10, g_long=10))  # two prints should be identical
