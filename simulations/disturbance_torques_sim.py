@@ -37,6 +37,10 @@ lats = np.zeros(len(time))
 alts = np.zeros(len(time))
 positions = np.zeros((len(time), 3))
 velocities = np.zeros((len(time), 3))
+aerod = np.zeros((len(time), 3))
+gravityd = np.zeros((len(time), 3))
+solard = np.zeros((len(time), 3))
+density = np.zeros(len(time))
 
 # declare all orbit stuff
 line1 = '1 44031U 98067PX  19083.14584174  .00005852  00000-0  94382-4 0  9997'
@@ -77,11 +81,14 @@ for i in range(len(time) - 1):
     sun_vec_body[i] = dcm[i] @ sun_vec[i]
 
     # get atmospheric density and velocity vector in body frame (for aerodynamic torque)
-    density = air_density.air_mass_density(date=time_track, alt=alts[i]/1000, g_lat=lats[i], g_long=lons[i])
+    density[i] = air_density.air_mass_density(date=time_track, alt=alts[i]/1000, g_lat=lats[i], g_long=lons[i])
     vel_body = dcm[i] @ velocities[i]
 
     # get disturbance torque
-    controls[i] = dt.gravity_gradient(ue, R0, cubesat) + dt.solar_pressure(sun_vec_body[i], cubesat) + dt.aerodynamic_torque(vel_body, density, cubesat)
+    aerod[i] = dt.aerodynamic_torque(vel_body, density[i], cubesat)
+    solard[i] = dt.solar_pressure(sun_vec_body[i], cubesat)
+    gravityd[i] = dt.gravity_gradient(ue, R0, cubesat)
+    controls[i] = aerod[i] + solard[i] + gravityd[i]
 
     # propagate orbit
     time_track = time_track + timedelta(seconds=time_step)
