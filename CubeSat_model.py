@@ -59,6 +59,10 @@ class Face2D:
     def reflection_coeff(self):
         return self._reflection_coeff
 
+    def copy(self):
+        return Face2D(vertices=self.vertices.copy(), sigma_n=self.sigma_n, sigma_t=self.sigma_t,
+                      reflection_coeff=self.reflection_coeff)
+
     def __add__(self, other):
         if isinstance(other, np.ndarray):
             return Face2D(self.vertices + other.reshape(2, 1), sigma_n=self.sigma_n, sigma_t=self.sigma_t,
@@ -204,6 +208,32 @@ class Face3D:
     def reflection_coeff(self):
         return self.face.reflection_coeff
 
+    def rotate(self, dcm: np.ndarray=None, axis: Union[str, np.ndarray]=None, angle: float=None):
+        if (dcm is None) and (axis is None or angle is None):
+            print('Face3D.rotate: EITHER THE DCM OR BOTH THE AXIS AND THE ANGLE MUST BE SPECIFIED')
+            return
+        elif dcm is not None:
+            rotation_matrix = dcm.T
+        else:
+            if isinstance(axis, str):
+                axis = self._unit_vector_from_string(axis)
+            axis *= 1.0 / np.linalg.norm(axis)
+            x, y, z = axis[0], axis[1], axis[2]
+            c, s = np.cos(np.deg2rad(angle)), np.sin(np.deg2rad(angle))
+            rotation_matrix = np.array([[c+x*x*(1-c), x*y*(1-c)-z*s, x*z*(1-c)+y*s],
+                                        [y*x*(1-c)+z*s, c+y*y*(1-c), y*z*(1-c)-x*s],
+                                        [z*x*(1-c)-y*s, z*y*(1-c)+x*s, c+z*z*(1-c)]])
+        self.translation = rotation_matrix @ self.translation
+        self.orientation = rotation_matrix @ self.orientation
+
+    def translate(self, vector: np.ndarray):
+        self.translation += vector.reshape(3, 1)
+
+    def copy(self):
+        return Face3D(face=self.face.copy(), orientation=self.orientation.copy(), translation=self.translation.copy(),
+                      name=self.name, color=self.color)
+
+
     def _unit_vector_from_string(self, string):
         if string[1] == 'x':
             v = np.array([1., 0., 0.])
@@ -212,14 +242,16 @@ class Face3D:
         elif string[1] == 'z':
             v = np.array([0., 0., 1.])
         else:
-            return None
+            print('Face3D._unit_vector_from_string: INVALID STRING')
+            return
 
         if string[0] == '+':
             return v
         elif string[0] == '-':
             return -v
         else:
-            return None
+            print('Face3D._unit_vector_from_string: INVALID STRING')
+            return
 
     def _set_face_positions(self):
         # convert 2D centroid/vertices to 3D in the xy plane
@@ -241,20 +273,21 @@ class Face3D:
 
 class Polygons3D:
     def __init__(self, faces: List[Face3D]):
-        self._faces = faces
+        self._faces = [face.copy() for face in faces]
 
     def plot(self):
-        max = 0
-        min = 0
+        max = -np.inf
+        min = np.inf
         for face in self.faces:
             max = np.max([face.vertices.max(), max])
             min = np.min([face.vertices.min(), min])
+        pad = 0.25 * (max - min)
 
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-        ax.set_xlim(min*2, max*2)
-        ax.set_ylim(min*2, max*2)
-        ax.set_zlim(min*2, max*2)
+        ax.set_xlim(min - pad, max + pad)
+        ax.set_ylim(min - pad, max + pad)
+        ax.set_zlim(min - pad, max + pad)
 
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
@@ -268,6 +301,19 @@ class Polygons3D:
     @property
     def faces(self):
         return self._faces
+
+    def rotate(self, dcm: np.ndarray=None, axis: Union[str, np.ndarray]=None, angle: float=None):
+        for face in self.faces:
+            face.rotate(dcm=dcm, axis=axis, angle=angle)
+
+    def translate(self, vector: np.ndarray):
+        for face in self.faces:
+            face.translate(vector)
+
+    def __iadd__(self, other):
+        self._faces += [face.copy() for face in other.faces]
+
+
 
 
 class CubeSat(Polygons3D):
