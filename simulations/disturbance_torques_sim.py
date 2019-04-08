@@ -12,6 +12,7 @@ from astropy.time import Time
 from CubeSat_model_examples import CubeSatSolarPressureEx1
 from datetime import datetime, timedelta
 from atmospheric_density import AirDensityModel
+from magnetic_field_model import magnetic_field
 
 # declare time step for integration
 time_step = 10
@@ -20,7 +21,7 @@ time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
 cubesat = CubeSatSolarPressureEx1(inertia=np.diag([2*(10**-2), 4*(10**-2), 5*(10**-3)]),
-                                  center_of_mass=np.array([0, 0, 0.01]))
+                                  center_of_mass=np.array([0, 0, 0]))
 
 # load class to get atmospheric density
 air_density = AirDensityModel()
@@ -41,6 +42,8 @@ aerod = np.zeros((len(time), 3))
 gravityd = np.zeros((len(time), 3))
 solard = np.zeros((len(time), 3))
 density = np.zeros(len(time))
+mag_field = np.zeros((len(time), 3))
+mag_field_body = np.zeros((len(time), 3))
 
 # declare all orbit stuff
 line1 = '1 44031U 98067PX  19083.14584174  .00005852  00000-0  94382-4 0  9997'
@@ -70,6 +73,11 @@ dcm[0] = tr.mrp_to_dcm(states[0][0])
 # the integration
 for i in range(len(time) - 1):
     print(i)
+
+    # get magnetic field (for show right now)
+    mag_field[i] = magnetic_field(time_track, lats[i], lons[i], alts[i])
+    mag_field_body[i] = dcm[i] @ mag_field[i]  # in the body frame
+
     # get unit vector towards nadir in body frame (for gravity gradient torque)
     R0 = np.linalg.norm(positions[i])
     nadir[i] = -positions[i]/R0
@@ -129,15 +137,20 @@ if __name__ == "__main__":
     # plot the mrp magnitude
     # _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
 
+    _plot(aerod, 'aerodynamic disturbance')
+    _plot(gravityd, 'gravity gradient disturbance')
+    _plot(solard, 'solar radiation pressure disturbance')
+
     from animation import AnimateAttitude, DrawingVectors, AdditionalPlots
     num = 10
     vec1 = DrawingVectors(nadir[::num], 'single', color='b', label='nadir', length=0.5)
     vec2 = DrawingVectors(sun_vec[::num], 'single', color='y', label='sun', length=0.5)
-    vec3 = DrawingVectors(velocities[::num], 'single', color='r', label='velocity', length=0.5)
+    vec3 = DrawingVectors(velocities[::num], 'single', color='g', label='velocity', length=0.5)
+    vec4 = DrawingVectors(mag_field[::num], 'single', color='r', label='magnetic field', length=0.5)
     ref1 = DrawingVectors(dcm[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=0.2)
     plot1 = AdditionalPlots(time[::num], controls[::num], labels=['X', 'Y', 'Z'])
     plot2 = AdditionalPlots(lons[::num], lats[::num], groundtrack=True)
-    a = AnimateAttitude(dcm[::num], draw_vector=[vec1, vec2, vec3, ref1], additional_plots=plot2, cubesat_model=cubesat)
+    a = AnimateAttitude(dcm[::num], draw_vector=[vec1, vec2, vec3, vec4, ref1], additional_plots=plot2, cubesat_model=cubesat)
     a.animate_and_plot()
 
     plt.show()
