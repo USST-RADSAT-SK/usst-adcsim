@@ -61,12 +61,23 @@ class CubeSatAerodynamicEx1(CubeSat):
         body_large_face = Face2D(np.array([[-0.05, -0.1], [0.05, -0.1], [0.05, 0.1], [-0.05, 0.1], [-0.05, -0.1]]).T)
         body_small_face = Face2D(np.array([[-0.05, -0.05], [0.05, -0.05], [0.05, 0.05], [-0.05, 0.05], [-0.05, -0.05]]).T)
 
-        body_px = Face3D(body_large_face, '+y+z', np.array([0.05, 0., 0.]), name='body+x', color='C0')
-        body_mx = Face3D(body_large_face, '-y+z', np.array([-0.05, 0., 0.]), name='body-x', color='C1')
-        body_py = Face3D(body_large_face, '-x+z', np.array([0., 0.05, 0.]), name='body+y', color='C2')
-        body_my = Face3D(body_large_face, '+x+z', np.array([0., -0.05, 0.]), name='body-y', color='C3')
-        body_pz = Face3D(body_small_face, '+x+y', np.array([0., 0., 0.1]), name='body+z', color='C4')
-        body_mz = Face3D(body_small_face, '-x+y', np.array([0., 0., -0.1]), name='body-z', color='C5')
+        solar_panel = Face2D(np.array([[-0.04, -0.02], [0.04, -0.02], [0.04, 0.01], [0.03, 0.02], [-0.03, 0.02], [-0.04, 0.01], [-0.04, -0.02]]).T, reflection_coeff=1.0)
+
+        solar_positions = [
+            ('+y+z', np.array([0.05, 0., 0.05])), ('+y+z', np.array([0.05, 0., -0.05])),
+            ('-y+z', np.array([-0.05, 0., 0.05])), ('-y+z', np.array([-0.05, 0., -0.05])),
+            ('-x+z', np.array([0., 0.05, 0.05])), ('-x+z', np.array([0., 0.05, -0.05])),
+            ('+x+z', np.array([0., -0.05, 0.05])), ('+x+z', np.array([0., -0.05, -0.05])),
+            ('+x+y', np.array([0., 0., 0.1])), ('-x+y', np.array([0., 0., -0.1]))
+        ]
+        solar_panels = [Face3D(solar_panel, p[0], p[1]) for p in solar_positions]
+
+        body_px = Face3D(body_large_face - (solar_panel + np.array([0., 0.05])) - (solar_panel + np.array([0., -0.05])), '+y+z', np.array([0.05, 0., 0.]), name='body+x', color='C0')
+        body_mx = Face3D(body_large_face - (solar_panel + np.array([0., 0.05])) - (solar_panel + np.array([0., -0.05])), '-y+z', np.array([-0.05, 0., 0.]), name='body-x', color='C1')
+        body_py = Face3D(body_large_face - (solar_panel + np.array([0., 0.05])) - (solar_panel + np.array([0., -0.05])), '-x+z', np.array([0., 0.05, 0.]), name='body+y', color='C2')
+        body_my = Face3D(body_large_face - (solar_panel + np.array([0., 0.05])) - (solar_panel + np.array([0., -0.05])), '+x+z', np.array([0., -0.05, 0.]), name='body-y', color='C3')
+        body_pz = Face3D(body_small_face - solar_panel, '+x+y', np.array([0., 0., 0.1]), name='body+z', color='C4')
+        body_mz = Face3D(body_small_face - solar_panel, '-x+y', np.array([0., 0., -0.1]), name='body-z', color='C5')
 
         antenna_base_large_face = Face2D(np.array([[-3., 0.], [3., 0.], [3., 35.7], [-3., 35.7], [-3., 0.]]).T/1e3)
         antenna_base_small_face = Face2D(np.array([[-2., 0.], [2., 0.], [2., 35.7], [-2., 35.7], [-2., 0.]]).T/1e3)
@@ -97,6 +108,12 @@ class CubeSatAerodynamicEx1(CubeSat):
         short_antenna_mx.translate(np.array([-50., -22., 97.])/1e3)
 
         faces = [body_px, body_mx, body_py, body_my, body_pz, body_mz]
+        faces += solar_panels
         faces += short_antenna_px.faces + short_antenna_mx.faces
         faces += long_antenna_py.faces + long_antenna_my.faces
         super().__init__(faces, center_of_mass=np.zeros(3), inertia=np.diag([2e-3, 2e-3, 8e-3]))
+
+import matplotlib.pyplot as plt
+cubesat = CubeSatAerodynamicEx1()
+cubesat.plot()
+plt.show()
