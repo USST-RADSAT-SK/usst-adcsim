@@ -233,7 +233,6 @@ class Face3D:
         return Face3D(face=self.face.copy(), orientation=self.orientation.copy(), translation=self.translation.copy(),
                       name=self.name, color=self.color)
 
-
     def _unit_vector_from_string(self, string):
         if string[1] == 'x':
             v = np.array([1., 0., 0.])
@@ -312,8 +311,6 @@ class Polygons3D:
 
     def __iadd__(self, other):
         self._faces += [face.copy() for face in other.faces]
-
-
 
 
 class CubeSat(Polygons3D):

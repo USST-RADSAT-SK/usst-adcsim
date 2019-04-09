@@ -116,7 +116,9 @@ class CubeSatAerodynamicEx1(CubeSat):
         faces = body_panels + solar_panels + short_antenna_px.faces + short_antenna_mx.faces + long_antenna_py.faces + long_antenna_my.faces
         super().__init__(faces, center_of_mass=np.zeros(3), inertia=np.diag([2e-3, 2e-3, 8e-3]))
 
-import matplotlib.pyplot as plt
-cubesat = CubeSatAerodynamicEx1()
-cubesat.plot()
-plt.show()
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    cubesat = CubeSatAerodynamicEx1()
+    cubesat.plot()
+    plt.show()

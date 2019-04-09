@@ -9,19 +9,18 @@ import util as ut
 from skyfield.api import load, EarthSatellite, utc
 from astropy.coordinates import get_sun
 from astropy.time import Time
-from CubeSat_model_examples import CubeSatSolarPressureEx1
+from CubeSat_model_examples import CubeSatAerodynamicEx1
 from datetime import datetime, timedelta
 from atmospheric_density import AirDensityModel
 from magnetic_field_model import magnetic_field
 
 # declare time step for integration
 time_step = 10
-end_time = 10000
+end_time = 30000
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
-cubesat = CubeSatSolarPressureEx1(inertia=np.diag([2*(10**-2), 4*(10**-2), 5*(10**-3)]),
-                                  center_of_mass=np.array([0, 0, 0]))
+cubesat = CubeSatAerodynamicEx1()
 
 # load class to get atmospheric density
 air_density = AirDensityModel()
@@ -65,7 +64,7 @@ alts[0] = subpoint.elevation.m
 dcm0 = ut.initial_align_gravity_stabilization(positions[0], velocities[0])
 sigma0 = tr.dcm_to_mrp(dcm0)
 # initialize angular velocity so that it is approximately the speed of rotation around the earth
-omega0_body = np.array([0, -0.00113, 0])
+omega0_body = np.array([0, 0, 0])
 omega0 = dcm0.T @ omega0_body
 states[0] = [sigma0, omega0]
 dcm[0] = tr.mrp_to_dcm(states[0][0])
@@ -94,8 +93,8 @@ for i in range(len(time) - 1):
 
     # get disturbance torque
     aerod[i] = dt.aerodynamic_torque(vel_body, density[i], cubesat)
-    solard[i] = dt.solar_pressure(sun_vec_body[i], cubesat)
-    gravityd[i] = dt.gravity_gradient(ue, R0, cubesat)
+    # solard[i] = dt.solar_pressure(sun_vec_body[i], cubesat)
+    # gravityd[i] = dt.gravity_gradient(ue, R0, cubesat)
     controls[i] = aerod[i] + solard[i] + gravityd[i]
 
     # propagate orbit
@@ -150,7 +149,7 @@ if __name__ == "__main__":
     ref1 = DrawingVectors(dcm[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=0.2)
     plot1 = AdditionalPlots(time[::num], controls[::num], labels=['X', 'Y', 'Z'])
     plot2 = AdditionalPlots(lons[::num], lats[::num], groundtrack=True)
-    a = AnimateAttitude(dcm[::num], draw_vector=[vec1, vec2, vec3, vec4, ref1], additional_plots=plot2, cubesat_model=cubesat)
+    a = AnimateAttitude(dcm[::num], draw_vector=[vec3, ref1], additional_plots=plot2, cubesat_model=cubesat)
     a.animate_and_plot()
 
     plt.show()
