@@ -61,56 +61,59 @@ class CubeSatAerodynamicEx1(CubeSat):
         body_large_face = Face2D(np.array([[-0.05, -0.1], [0.05, -0.1], [0.05, 0.1], [-0.05, 0.1], [-0.05, -0.1]]).T)
         body_small_face = Face2D(np.array([[-0.05, -0.05], [0.05, -0.05], [0.05, 0.05], [-0.05, 0.05], [-0.05, -0.05]]).T)
 
-        solar_panel = Face2D(np.array([[-0.04, -0.02], [0.04, -0.02], [0.04, 0.01], [0.03, 0.02], [-0.03, 0.02], [-0.04, 0.01], [-0.04, -0.02]]).T, reflection_coeff=1.0)
+        solar_panel = Face2D(np.array([[-0.04, -0.02], [0.04, -0.02], [0.04, 0.0064], [0.0264, 0.02], [-0.0264, 0.02], [-0.04, 0.0064], [-0.04, -0.02]]).T, reflection_coeff=1.0)
 
-        solar_positions = [
-            ('+y+z', np.array([0.05, 0., 0.05])), ('+y+z', np.array([0.05, 0., -0.05])),
-            ('-y+z', np.array([-0.05, 0., 0.05])), ('-y+z', np.array([-0.05, 0., -0.05])),
-            ('-x+z', np.array([0., 0.05, 0.05])), ('-x+z', np.array([0., 0.05, -0.05])),
-            ('+x+z', np.array([0., -0.05, 0.05])), ('+x+z', np.array([0., -0.05, -0.05])),
-            ('+x+y', np.array([0., 0., 0.1])), ('-x+y', np.array([0., 0., -0.1]))
-        ]
-        solar_panels = [Face3D(solar_panel, p[0], p[1]) for p in solar_positions]
+        solar_positions = {
+            '+y+z': (np.array([0.05, 0., 0.]), (np.array([0., 0.0709]), np.array([0., 0.0289]), np.array([0., -0.0289]), np.array([0., -0.0709]))),
+            '-y+z': (np.array([-0.05, 0., 0.]), (np.array([0., 0.0709]), np.array([0., 0.0289]), np.array([0., -0.0289]), np.array([0., -0.0709]))),
+            '-x+z': (np.array([0., 0.05, 0.]), (np.array([0., 0.0709]), np.array([0., 0.0289]), np.array([0., -0.0289]), np.array([0., -0.0709]))),
+            '+x+z': (np.array([0., -0.05, 0.]), (np.array([0., 0.0709]), np.array([0., 0.0289]), np.array([0., -0.0289]), np.array([0., -0.0709]))),
+            '+x+y': (np.array([0., 0., 0.1]), (np.array([0., 0.021]), np.array([0., -0.021]))),
+            '-x+y': (np.array([0., 0., -0.1]), (np.array([0., 0.021]), np.array([0., -0.021])))
+        }
+        # solar_panels = Face3D(solar_panel, p[0], p[1]) for p in solar_positions]
+        solar_panels = []
+        for plane, (normal, inplane) in solar_positions.items():
+            solar_panels += [Face3D(solar_panel + position, plane, normal) for position in inplane]
 
-        body_px = Face3D(body_large_face - (solar_panel + np.array([0., 0.05])) - (solar_panel + np.array([0., -0.05])), '+y+z', np.array([0.05, 0., 0.]), name='body+x', color='C0')
-        body_mx = Face3D(body_large_face - (solar_panel + np.array([0., 0.05])) - (solar_panel + np.array([0., -0.05])), '-y+z', np.array([-0.05, 0., 0.]), name='body-x', color='C1')
-        body_py = Face3D(body_large_face - (solar_panel + np.array([0., 0.05])) - (solar_panel + np.array([0., -0.05])), '-x+z', np.array([0., 0.05, 0.]), name='body+y', color='C2')
-        body_my = Face3D(body_large_face - (solar_panel + np.array([0., 0.05])) - (solar_panel + np.array([0., -0.05])), '+x+z', np.array([0., -0.05, 0.]), name='body-y', color='C3')
-        body_pz = Face3D(body_small_face - solar_panel, '+x+y', np.array([0., 0., 0.1]), name='body+z', color='C4')
-        body_mz = Face3D(body_small_face - solar_panel, '-x+y', np.array([0., 0., -0.1]), name='body-z', color='C5')
+        body_panels = []
+        i = 0
+        for plane, (normal, inplane) in solar_positions.items():
+            face = body_small_face.copy() if 'x+y' in plane else body_large_face.copy()
+            for position in inplane:
+                face -= solar_panel + position
+            body_panels += [Face3D(face, plane, normal, color=f'C{i}')]
+            i += 1
 
         antenna_base_large_face = Face2D(np.array([[-3., 0.], [3., 0.], [3., 35.7], [-3., 35.7], [-3., 0.]]).T/1e3)
         antenna_base_small_face = Face2D(np.array([[-2., 0.], [2., 0.], [2., 35.7], [-2., 35.7], [-2., 0.]]).T/1e3)
         long_antenna_face       = Face2D(np.array([[-1.5, 0.], [1.5, 0.], [1.5, 478.3], [-1.5, 478.3], [-1.5, 0.]]).T/1e3)
         short_antenna_face      = Face2D(np.array([[-1.5, 0.], [1.5, 0.], [1.5, 136.3], [-1.5, 136.3], [-1.5, 0.]]).T/1e3)
 
-        antenna_base_up    = Face3D(antenna_base_large_face, '+x+y', np.array([0., 0., 2.]).T/1e3)
-        antenna_base_down  = Face3D(antenna_base_large_face, '-x+y', np.array([0., 0., -2.]).T/1e3)
-        antenna_base_left  = Face3D(antenna_base_small_face, '-z+y', np.array([3., 0., 0.]).T/1e3)
-        antenna_base_right = Face3D(antenna_base_small_face, '+z+y', np.array([-3., 0., 0.]).T/1e3)
+        antenna_base_panels = [Face3D(antenna_base_large_face, '+x+y', np.array([0., 0., 2.]).T/1e3),
+                               Face3D(antenna_base_large_face, '-x+y', np.array([0., 0., -2.]).T/1e3),
+                               Face3D(antenna_base_small_face, '-z+y', np.array([3., 0., 0.]).T/1e3),
+                               Face3D(antenna_base_small_face, '+z+y', np.array([-3., 0., 0.]).T/1e3)]
 
-        long_antenna_left   = Face3D(long_antenna_face,  '-z+y', np.array([1., 35.7, 0.]).T/1e3)
-        long_antenna_right  = Face3D(long_antenna_face,  '+z+y', np.array([1., 35.7, 0.]).T/1e3)
-        short_antenna_left  = Face3D(short_antenna_face, '-z+y', np.array([1., 35.7, 0.]).T/1e3)
-        short_antenna_right = Face3D(short_antenna_face, '+z+y', np.array([1., 35.7, 0.]).T/1e3)
+        long_antenna_panels = [Face3D(long_antenna_face,  '-z+y', np.array([1., 35.7, 0.]).T/1e3),
+                               Face3D(long_antenna_face,  '+z+y', np.array([1., 35.7, 0.]).T/1e3)]
+        short_antenna_panels = [Face3D(short_antenna_face, '-z+y', np.array([1., 35.7, 0.]).T/1e3),
+                                Face3D(short_antenna_face, '+z+y', np.array([1., 35.7, 0.]).T/1e3)]
 
-        long_antenna_py = Polygons3D([antenna_base_up, antenna_base_down, antenna_base_left, antenna_base_right, long_antenna_left, long_antenna_right])
+        long_antenna_py = Polygons3D(antenna_base_panels + long_antenna_panels)
         long_antenna_py.translate(np.array([22., 50., 97.])/1e3)
-        long_antenna_my = Polygons3D([antenna_base_up, antenna_base_down, antenna_base_left, antenna_base_right, long_antenna_left, long_antenna_right])
+        long_antenna_my = Polygons3D(antenna_base_panels + long_antenna_panels)
         long_antenna_my.rotate(axis='+z', angle=180.)
         long_antenna_my.translate(np.array([-22., -50., 97.])/1e3)
 
-        short_antenna_px = Polygons3D([antenna_base_up, antenna_base_down, antenna_base_left, antenna_base_right, short_antenna_left, short_antenna_right])
+        short_antenna_px = Polygons3D(antenna_base_panels + short_antenna_panels)
         short_antenna_px.rotate(axis='+z', angle=-90.)
         short_antenna_px.translate(np.array([50., 22., 97.])/1e3)
-        short_antenna_mx = Polygons3D([antenna_base_up, antenna_base_down, antenna_base_left, antenna_base_right, short_antenna_left, short_antenna_right])
+        short_antenna_mx = Polygons3D(antenna_base_panels + short_antenna_panels)
         short_antenna_mx.rotate(axis='+z', angle=90.)
         short_antenna_mx.translate(np.array([-50., -22., 97.])/1e3)
 
-        faces = [body_px, body_mx, body_py, body_my, body_pz, body_mz]
-        faces += solar_panels
-        faces += short_antenna_px.faces + short_antenna_mx.faces
-        faces += long_antenna_py.faces + long_antenna_my.faces
+        faces = body_panels + solar_panels + short_antenna_px.faces + short_antenna_mx.faces + long_antenna_py.faces + long_antenna_my.faces
         super().__init__(faces, center_of_mass=np.zeros(3), inertia=np.diag([2e-3, 2e-3, 8e-3]))
 
 import matplotlib.pyplot as plt
