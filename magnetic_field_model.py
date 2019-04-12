@@ -25,27 +25,21 @@
 import numpy as np
 import math, os
 import datetime
-
+import icrf_to_fixed
 
 class GeoMag:
-    def GeoMagCartesian(self, r, time=datetime.date.today()): # Geocentric terrestrial Cartesian r=(x,y,z), (meters), date
-        #time = date('Y') + date('z')/365
+
+    def _GeoMagSpherical(self, sintheta, costheta, sinphi, cosphi, r, time=datetime.date.today()): # Geocentric terrestrial Cartesian r=(x,y,z), (meters), date
+        # contains the core of the magnetic field calculation, with spherical input and output
+
         time = time.year+(time.timetuple().tm_yday/365.0)  # usst-adcs fix (easier way to get day of year)
-        # alt = h/3280.8399
-
-        # otime = oalt = olat = olon = -1000.0
-
         dt = time - self.epoch
 
-        #/* CONVERT FROM CARTESION COORDS. TO SPHERICAL COORDS. */
-        x, y, z = r[0], r[1], r[2]
-        h = math.sqrt(x**2 + y**2)
-        r = math.sqrt(x**2 + y**2 + z**2)
-        sp = y / h
-        cp = x / h
-        st = h / r
-        ct = z / r
-        r *= 1e-3  # convert to kilometers
+        sp = sinphi
+        cp = cosphi
+        st = sintheta
+        ct = costheta
+        r *= 1e-3
 
         self.sp[1] = sp
         self.cp[1] = cp
@@ -128,257 +122,103 @@ class GeoMag:
         else:
             bp = bp/st
 
-        # rotate magnetic vector components from spheric to cartesian
-        bx = cp*st*br + cp*ct*bt - sp*bp
-        by = sp*st*br + sp*ct*bt + cp*bp
-        bz = ct*br - st*bt
+        return np.array([br, bt, bp])
 
+    def GeoMag(self, location, time=datetime.datetime.today(), location_format='geodetic', output_format='geodetic'):
+        """
+        Calculate the magnetic field from the WMM 2019.
 
-
-        # /*
-        # ROTATE MAGNETIC VECTOR COMPONENTS FROM SPHERICAL TO
-        # GEODETIC COORDINATES
-        # */
-        # bx = -bt*ca-br*sa
-        # by = bp
-        # bz = bt*sa-br*ca
-        # /*
-        # COMPUTE DECLINATION (DEC), INCLINATION (DIP) AND
-        # TOTAL INTENSITY (TI)
-        # */
-        # bh = math.sqrt((bx*bx)+(by*by))
-        # ti = math.sqrt((bh*bh)+(bz*bz))
-        # dec = math.degrees(math.atan2(by,bx))
-        # dip = math.degrees(math.atan2(bz,bh))
-        # /*
-        # COMPUTE MAGNETIC GRID VARIATION IF THE CURRENT
-        # GEODETIC POSITION IS IN THE ARCTIC OR ANTARCTIC
-        # (I.E. GLAT > +55 DEGREES OR GLAT < -55 DEGREES)
-
-        # OTHERWISE, SET MAGNETIC GRID VARIATION TO -999.0
-        # */
-        # gv = -999.0
-        # if (math.fabs(glat) >= 55.):
-        #     if (glat > 0.0 and glon >= 0.0):
-        #         gv = dec-glon
-        #     if (glat > 0.0 and glon < 0.0):
-        #         gv = dec+math.fabs(glon);
-        #     if (glat < 0.0 and glon >= 0.0):
-        #         gv = dec+glon
-        #     if (glat < 0.0 and glon < 0.0):
-        #         gv = dec-math.fabs(glon)
-        #     if (gv > +180.0):
-        #         gv = gv - 360.0
-        #     if (gv < -180.0):
-        #         gv = gv + 360.0
-        #
-        otime = time
-        # oalt = alt
-        # olat = glat
-        # olon = glon
-
-        class RetObj:
-            pass
-        retobj = RetObj()
-        # retobj.dec = dec
-        # retobj.dip = dip
-        # retobj.ti = ti
-        # retobj.bh = bh
-        # retobj.bx = bx
-        # retobj.by = by
-        # retobj.bz = bz
-        # retobj.lat = dlat
-        # retobj.lon = dlon
-        # retobj.alt = h
-
-
-        retobj.x = x
-        retobj.y = y
-        retobj.z = z
-        retobj.bx = bx
-        retobj.by = by
-        retobj.bz = bz
-        retobj.time = time
-
-        return retobj
-
-    def GeoMag(self, dlat, dlon, h=0, time=datetime.date.today()): # latitude (decimal degrees), longitude (decimal degrees), altitude (km), date
-        #time = date('Y') + date('z')/365
-        time = time.year+(time.timetuple().tm_yday/365.0)  # usst-adcs fix (easier way to get day of year)
-        alt = h
-
-        otime = oalt = olat = olon = -1000.0
-
-        dt = time - self.epoch
-        glat = dlat
-        glon = dlon
-        rlat = math.radians(glat)
-        rlon = math.radians(glon)
-        srlon = math.sin(rlon)
-        srlat = math.sin(rlat)
-        crlon = math.cos(rlon)
-        crlat = math.cos(rlat)
-        srlat2 = srlat*srlat
-        crlat2 = crlat*crlat
-        self.sp[1] = srlon
-        self.cp[1] = crlon
-
-        #/* CONVERT FROM GEODETIC COORDS. TO SPHERICAL COORDS. */
-        if (alt != oalt or glat != olat):
-            q = math.sqrt(self.a2-self.c2*srlat2)
+        Parameters
+        ----------
+        location : np.ndarray
+            A 3-element vector specifying the location to get the magnetic field at. Interpretation of location
+            depends on location_format.
+        time : datetime.datetime
+            Date to get the magnetic field at.
+        location_format : str
+            Specifies the interpretation of the location vector. Can take the following values:
+            geodetic: location = [latitude (deg), longitude (deg), altitude (m)]
+            cartesian: location = [x, y, z] (m) in fixed-Earth coordinate frame
+            inertial: location = [x, y, z] (m) in inertial coordinate frame
+        output_format : str
+            Specifies the output format. Can take the following values:
+            geodetic: output = [north, east, nadir] (nT)
+            compass: output = [declination (deg), inclination (deg), magnitude (nT)]
+            cartesian: output = [x, y, z] (nT) in fixed-Earth coordinate frame
+            inertial: output = [x, y, z] (nT) in inertial coordinate frame
+        """
+        # convert location to spherical coordinates
+        if location_format == 'geodetic':
+            lat, lon, alt = np.deg2rad(location[0]), np.deg2rad(location[1]), location[2] * 1e-3  # convert from deg to rad, m to km
+            slon = np.sin(lon)
+            slat = np.sin(lat)
+            clon = np.cos(lon)
+            clat = np.cos(lat)
+            slat2 = slat*slat
+            clat2 = clat*clat
+            q = math.sqrt(self.a2-self.c2*slat2)
             q1 = alt*q
             q2 = ((q1+self.a2)/(q1+self.b2))*((q1+self.a2)/(q1+self.b2))
-            ct = srlat/math.sqrt(q2*crlat2+srlat2)
+            ct = slat/math.sqrt(q2*clat2+slat2)
             st = math.sqrt(1.0-(ct*ct))
-            r2 = (alt*alt)+2.0*q1+(self.a4-self.c4*srlat2)/(q*q)
+            r2 = (alt*alt)+2.0*q1+(self.a4-self.c4*slat2)/(q*q)
             r = math.sqrt(r2)
-            d = math.sqrt(self.a2*crlat2+self.b2*srlat2)
+            sp = slon
+            cp = clon
+
+            d = math.sqrt(self.a2*clat2+self.b2*slat2)
             ca = (alt+d)/r
-            sa = self.c2*crlat*srlat/(r*d)
+            sa = self.c2*clat*slat/(r*d)
 
-        if (glon != olon):
-            for m in range(2,self.maxord+1):
-                self.sp[m] = self.sp[1]*self.cp[m-1]+self.cp[1]*self.sp[m-1]
-                self.cp[m] = self.cp[1]*self.cp[m-1]-self.sp[1]*self.sp[m-1]
-
-        aor = self.re/r
-        ar = aor*aor
-        br = bt = bp = bpp = 0.0
-        for n in range(1,self.maxord+1):
-            ar = ar*aor
-
-            #for (m=0,D3=1,D4=(n+m+D3)/D3;D4>0;D4--,m+=D3):
-            m=0
-            D3=1
-            #D4=(n+m+D3)/D3
-            D4=(n+m+1)
-            while D4>0:
-
-                # /*
-                # COMPUTE UNNORMALIZED ASSOCIATED LEGENDRE POLYNOMIALS
-                # AND DERIVATIVES VIA RECURSION RELATIONS
-                # */
-                if (alt != oalt or glat != olat):
-                    if (n == m):
-                        self.p[m][n] = st * self.p[m-1][n-1]
-                        self.dp[m][n] = st*self.dp[m-1][n-1]+ct*self.p[m-1][n-1]
-
-                    elif (n == 1 and m == 0):
-                        self.p[m][n] = ct*self.p[m][n-1]
-                        self.dp[m][n] = ct*self.dp[m][n-1]-st*self.p[m][n-1]
-
-                    elif (n > 1 and n != m):
-                        if (m > n-2):
-                            self.p[m][n-2] = 0
-                        if (m > n-2):
-                            self.dp[m][n-2] = 0.0
-                        self.p[m][n] = ct*self.p[m][n-1]-self.k[m][n]*self.p[m][n-2]
-                        self.dp[m][n] = ct*self.dp[m][n-1] - st*self.p[m][n-1]-self.k[m][n]*self.dp[m][n-2]
-
-                # /*
-                # TIME ADJUST THE GAUSS COEFFICIENTS
-                # */
-                if (time != otime):
-                    self.tc[m][n] = self.c[m][n]+dt*self.cd[m][n]
-                    if (m != 0):
-                        self.tc[n][m-1] = self.c[n][m-1]+dt*self.cd[n][m-1]
-
-                # /*
-                # ACCUMULATE TERMS OF THE SPHERICAL HARMONIC EXPANSIONS
-                # */
-                par = ar*self.p[m][n]
-
-                if (m == 0):
-                    temp1 = self.tc[m][n]*self.cp[m]
-                    temp2 = self.tc[m][n]*self.sp[m]
-                else:
-                    temp1 = self.tc[m][n]*self.cp[m]+self.tc[n][m-1]*self.sp[m]
-                    temp2 = self.tc[m][n]*self.sp[m]-self.tc[n][m-1]*self.cp[m]
-
-                bt = bt-ar*temp1*self.dp[m][n]
-                bp = bp + (self.fm[m] * temp2 * par)
-                br = br + (self.fn[n] * temp1 * par)
-                # /*
-                # SPECIAL CASE:  NORTH/SOUTH GEOGRAPHIC POLES
-                # */
-                if (st == 0.0 and m == 1):
-                    if (n == 1):
-                        self.pp[n] = self.pp[n-1]
-                    else:
-                        self.pp[n] = ct*self.pp[n-1]-self.k[m][n]*self.pp[n-2]
-                    parp = ar*self.pp[n]
-                    bpp = bpp + (self.fm[m]*temp2*parp)
-
-                D4=D4-1
-                m=m+1
-
-        if (st == 0.0):
-            bp = bpp
+            # convert back to meters
+            d *= 1e3
+            r *= 1e3
+            alt *= 1e3
+        elif location_format == 'cartesian' or location_format == 'inertial':
+            if location_format == 'inertial':
+                location = icrf_to_fixed.icrf_to_fixed(time) @ location
+            x, y, z = location[0], location[1], location[2]
+            h = math.sqrt(x**2 + y**2)
+            r = math.sqrt(x**2 + y**2 + z**2)
+            sp = y / h
+            cp = x / h
+            st = h / r
+            ct = z / r
         else:
-            bp = bp/st
+            raise ValueError(f'Invalid location format \'{location_format}\'')
 
-        # /*
-        # ROTATE MAGNETIC VECTOR COMPONENTS FROM SPHERICAL TO
-        # GEODETIC COORDINATES
-        # */
-        bx = -bt*ca-br*sa
-        by = bp
-        bz = bt*sa-br*ca
-        # /*
-        # COMPUTE DECLINATION (DEC), INCLINATION (DIP) AND
-        # TOTAL INTENSITY (TI)
-        # */
-        bh = math.sqrt((bx*bx)+(by*by))
-        ti = math.sqrt((bh*bh)+(bz*bz))
-        dec = math.degrees(math.atan2(by,bx))
-        dip = math.degrees(math.atan2(bz,bh))
-        # /*
-        # COMPUTE MAGNETIC GRID VARIATION IF THE CURRENT
-        # GEODETIC POSITION IS IN THE ARCTIC OR ANTARCTIC
-        # (I.E. GLAT > +55 DEGREES OR GLAT < -55 DEGREES)
+        br, bt, bp = self._GeoMagSpherical(st, ct, sp, cp, r, time)
 
-        # OTHERWISE, SET MAGNETIC GRID VARIATION TO -999.0
-        # */
-        gv = -999.0
-        if (math.fabs(glat) >= 55.):
-            if (glat > 0.0 and glon >= 0.0):
-                gv = dec-glon
-            if (glat > 0.0 and glon < 0.0):
-                gv = dec+math.fabs(glon);
-            if (glat < 0.0 and glon >= 0.0):
-                gv = dec+glon
-            if (glat < 0.0 and glon < 0.0):
-                gv = dec-math.fabs(glon)
-            if (gv > +180.0):
-                gv = gv - 360.0
-            if (gv < -180.0):
-                gv = gv + 360.0
-
-        otime = time
-        oalt = alt
-        olat = glat
-        olon = glon
-
-        class RetObj:
-            pass
-        retobj = RetObj()
-        retobj.dec = dec
-        retobj.dip = dip
-        retobj.ti = ti
-        retobj.bh = bh
-        retobj.bx = bx
-        retobj.by = by
-        retobj.bz = bz
-        retobj.lat = dlat
-        retobj.lon = dlon
-        retobj.alt = h
-        retobj.time = time
-
-        return retobj
+        # convert magnetic field from spherical coordinates to output_format
+        if output_format == 'geodetic' or output_format == 'compass':
+            if location_format != 'geodetic':
+                raise ValueError('At this time, a geodetic location must be specified to get geodetic or compass output')
+            bnorth = -bt*ca-br*sa
+            beast = bp
+            bdown = bt*sa-br*ca
+            if output_format == 'compass':
+                bh = np.sqrt((bnorth*bnorth)+(beast*beast))
+                ti = np.sqrt((bh*bh)+(bdown*bdown))
+                dec = np.rad2deg(math.atan2(beast,bnorth))
+                dip = np.rad2deg(math.atan2(bdown,bh))
+                return np.array([dec, dip, ti])
+            return np.array([bnorth, beast, bdown])
+        elif output_format == 'cartesian' or output_format == 'inertial':
+            bx = cp*st*br + cp*ct*bt - sp*bp
+            by = sp*st*br + sp*ct*bt + cp*bp
+            bz = ct*br - st*bt
+            b = np.array([bx, by, bz])
+            if output_format == 'inertial':
+                return icrf_to_fixed.icrf_to_fixed(time).T @ b
+            return b
+        else:
+            raise ValueError(f'Invalid output format \'{output_format}\'')
 
     def __init__(self, wmm_filename=None):
         if not wmm_filename:
-            wmm_filename = os.path.join(os.path.dirname(__file__), 'WMM.COF')
+            wmm_filename = os.path.join(os.path.dirname(__file__), 'WMM_2015_v2.COF')
+        print(wmm_filename)
+
         wmm=[]
         with open(wmm_filename) as wmm_file:
             for line in wmm_file:
@@ -461,20 +301,6 @@ class GeoMag:
                 D2=D2-1
                 m=m+D1
 
-
-def magnetic_field_cartesian(date: datetime.date, r: np.ndarray):
+def magnetic_field(date: datetime.datetime, lat, lon, alt, output_format='cartesian'):
     g = GeoMag()
-    ret = g.GeoMagCartesian(r, date)
-    return np.array([ret.bx, ret.by, ret.bz])
-
-
-def magnetic_field(date: datetime.date, lat, lon, alt):
-    g = GeoMag()
-    ret = g.GeoMag(lat, lon, alt, date)
-    return np.array([ret.bx, ret.by, ret.bz])
-
-
-if __name__ == "__main__":
-    from skyfield.api import utc
-    time_track = datetime.datetime(2019, 3, 24, 18, 35, 1, tzinfo=utc)
-    print(magnetic_field(time_track, 10, 10, 400))
+    return g.GeoMag(np.array([lat, lon, alt]), date, location_format='geodetic', output_format=output_format)
