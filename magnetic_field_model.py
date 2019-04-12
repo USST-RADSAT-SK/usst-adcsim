@@ -23,9 +23,11 @@
 # Note: I'm not sure if I trust this code in the long run. For initial results it seems fine.
 
 import numpy as np
-import math, os
+import math
+import os
 import datetime
 import icrf_to_fixed
+
 
 class GeoMag:
 
@@ -301,6 +303,37 @@ class GeoMag:
                 D2=D2-1
                 m=m+D1
 
+
 def magnetic_field(date: datetime.datetime, lat, lon, alt, output_format='cartesian'):
     g = GeoMag()
     return g.GeoMag(np.array([lat, lon, alt]), date, location_format='geodetic', output_format=output_format)
+
+
+if __name__ == "__main__":
+    from astropy import coordinates as coords
+    from astropy.time import Time
+    from astropy import units as u
+    from skyfield.api import load, EarthSatellite, utc
+    from datetime import datetime
+
+    line1 = '1 44031U 98067PX  19083.14584174  .00005852  00000-0  94382-4 0  9997'
+    line2 = '2 44031  51.6393  63.5548 0003193 165.0023 195.1063 15.54481029  8074'
+    satellite = EarthSatellite(line1, line2)
+    ts = load.timescale()
+    time_track = datetime(2019, 3, 24, 18, 35, 1, tzinfo=utc)
+    t = ts.utc(time_track)
+    geo = satellite.at(t)
+    subpoint = geo.subpoint()
+
+    now = Time(time_track)
+    mag_ecef = magnetic_field(time_track, subpoint.latitude.degrees, subpoint.longitude.degrees, subpoint.elevation.m)
+    mag_inertial = magnetic_field(time_track, subpoint.latitude.degrees, subpoint.longitude.degrees,
+                                  subpoint.elevation.m, output_format='inertial')
+
+    mag_ecef_obj = coords.EarthLocation.from_geocentric(mag_ecef[0], mag_ecef[1], mag_ecef[2], unit=u.meter)
+    mag_gcrs = mag_ecef_obj.get_gcrs(obstime=now).cartesian.xyz.value
+
+    print(mag_inertial)
+    print(mag_gcrs)
+    # This shows that the inertial system output from the magnetic_field function is very close to what astropy gives in
+    # gcrs

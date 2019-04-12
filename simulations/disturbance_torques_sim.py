@@ -12,7 +12,7 @@ from astropy.time import Time
 from CubeSat_model_examples import CubeSatAerodynamicEx1
 from datetime import datetime, timedelta
 from atmospheric_density import AirDensityModel
-from magnetic_field_model import magnetic_field
+from magnetic_field_model import GeoMag
 
 # declare time step for integration
 time_step = 10
@@ -22,8 +22,11 @@ time = np.arange(0, end_time, time_step)
 # create the CubeSat model
 cubesat = CubeSatAerodynamicEx1()
 
-# load class to get atmospheric density
+# create atmospheric density model
 air_density = AirDensityModel()
+
+# create magnetic field model
+geomag = GeoMag()
 
 # declare memory
 states = np.zeros((len(time), 2, 3))
@@ -74,7 +77,7 @@ for i in range(len(time) - 1):
     print(i)
 
     # get magnetic field (for show right now)
-    mag_field[i] = magnetic_field(time_track, lats[i], lons[i], alts[i])
+    mag_field[i] = geomag.GeoMag(np.array([lats[i], lons[i], alts[i]]), time_track, output_format='inertial')
     mag_field_body[i] = dcm[i] @ mag_field[i]  # in the body frame
 
     # get unit vector towards nadir in body frame (for gravity gradient torque)
@@ -149,7 +152,7 @@ if __name__ == "__main__":
     ref1 = DrawingVectors(dcm[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=0.2)
     plot1 = AdditionalPlots(time[::num], controls[::num], labels=['X', 'Y', 'Z'])
     plot2 = AdditionalPlots(lons[::num], lats[::num], groundtrack=True)
-    a = AnimateAttitude(dcm[::num], draw_vector=[vec3, ref1], additional_plots=plot2, cubesat_model=cubesat)
+    a = AnimateAttitude(dcm[::num], draw_vector=[vec4, ref1], additional_plots=plot2, cubesat_model=cubesat)
     a.animate_and_plot()
 
     plt.show()
