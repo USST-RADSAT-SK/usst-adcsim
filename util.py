@@ -63,3 +63,21 @@ def initial_align_gravity_stabilization(pos_vec, vel_vec):
     dcm = np.array([v_corrected, t1, p])
 
     return dcm
+
+
+def inertial_to_orbit_frame(pos_vec, vel_vec):
+    p = pos_vec
+    p = p / np.linalg.norm(p)
+
+    v = vel_vec
+    v = v / np.linalg.norm(v)
+
+    t1 = cross_product_operator(v) @ p
+
+    t1 = t1/np.linalg.norm(t1)
+
+    v_corrected = cross_product_operator(p) @ t1
+
+    dcm = np.array([v_corrected, t1, -p])
+
+    return dcm

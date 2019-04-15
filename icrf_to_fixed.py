@@ -54,5 +54,3 @@ if __name__ == '__main__':
     rf = R @ rc  # vector in fixed frame
     print(rf)
     print(R.T @ rf)  # rotate it back again
-
-

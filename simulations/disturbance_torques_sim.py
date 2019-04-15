@@ -9,7 +9,7 @@ import util as ut
 from skyfield.api import load, EarthSatellite, utc
 from astropy.coordinates import get_sun
 from astropy.time import Time
-from CubeSat_model_examples import CubeSatAerodynamicEx1
+from CubeSat_model_examples import CubeSatSolarPressureEx1
 from datetime import datetime, timedelta
 from atmospheric_density import AirDensityModel
 from magnetic_field_model import GeoMag
@@ -20,7 +20,7 @@ end_time = 30000
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
-cubesat = CubeSatAerodynamicEx1()
+cubesat = CubeSatSolarPressureEx1(inertia=np.diag([1e-3, 2e-3, 2e-4]))
 
 # create atmospheric density model
 air_density = AirDensityModel()
@@ -30,7 +30,9 @@ geomag = GeoMag()
 
 # declare memory
 states = np.zeros((len(time), 2, 3))
-dcm = np.zeros((len(time), 3, 3))
+dcm_bn = np.zeros((len(time), 3, 3))
+dcm_on = np.zeros((len(time), 3, 3))
+dcm_bo = np.zeros((len(time), 3, 3))
 controls = np.zeros((len(time), 3))
 nadir = np.zeros((len(time), 3))
 sun_vec = np.zeros((len(time), 3))
@@ -60,8 +62,8 @@ subpoint = geo.subpoint()
 # declare initial conditions
 positions[0] = geo.position.m
 velocities[0] = geo.velocity.km_per_s * 1000
-lons[0] = subpoint.longitude.radians * 180 / np.pi
-lats[0] = subpoint.latitude.radians * 180 / np.pi
+lons[0] = subpoint.longitude.degrees
+lats[0] = subpoint.latitude.degrees
 alts[0] = subpoint.elevation.m
 # initialize attitude so that z direction of body frame is aligned with nadir
 dcm0 = ut.initial_align_gravity_stabilization(positions[0], velocities[0])
@@ -70,7 +72,9 @@ sigma0 = tr.dcm_to_mrp(dcm0)
 omega0_body = np.array([0, 0, 0])
 omega0 = dcm0.T @ omega0_body
 states[0] = [sigma0, omega0]
-dcm[0] = tr.mrp_to_dcm(states[0][0])
+dcm_bn[0] = tr.mrp_to_dcm(states[0][0])
+dcm_on[0] = ut.inertial_to_orbit_frame(positions[0], velocities[0])
+dcm_bo[0] = dcm_bn[0] @ dcm_on[0].T
 
 # the integration
 for i in range(len(time) - 1):
@@ -78,26 +82,26 @@ for i in range(len(time) - 1):
 
     # get magnetic field (for show right now)
     mag_field[i] = geomag.GeoMag(np.array([lats[i], lons[i], alts[i]]), time_track, output_format='inertial')
-    mag_field_body[i] = dcm[i] @ mag_field[i]  # in the body frame
+    mag_field_body[i] = dcm_bn[i] @ mag_field[i]  # in the body frame
 
     # get unit vector towards nadir in body frame (for gravity gradient torque)
     R0 = np.linalg.norm(positions[i])
     nadir[i] = -positions[i]/R0
-    ue = dcm[i] @ nadir[i]
+    ue = dcm_bn[i] @ nadir[i]
 
     # get sun vector in GCRS (for solar pressure torque)
     sun_vec[i] = get_sun(Time(time_track)).cartesian.xyz.value
     sun_vec[i] = sun_vec[i]/np.linalg.norm(sun_vec[i])
-    sun_vec_body[i] = dcm[i] @ sun_vec[i]
+    sun_vec_body[i] = dcm_bn[i] @ sun_vec[i]
 
     # get atmospheric density and velocity vector in body frame (for aerodynamic torque)
     density[i] = air_density.air_mass_density(date=time_track, alt=alts[i]/1000, g_lat=lats[i], g_long=lons[i])
-    vel_body = dcm[i] @ velocities[i]
+    vel_body = dcm_bn[i] @ velocities[i]
 
     # get disturbance torque
-    aerod[i] = dt.aerodynamic_torque(vel_body, density[i], cubesat)
+    # aerod[i] = dt.aerodynamic_torque(vel_body, density[i], cubesat)
     # solard[i] = dt.solar_pressure(sun_vec_body[i], cubesat)
-    # gravityd[i] = dt.gravity_gradient(ue, R0, cubesat)
+    gravityd[i] = dt.gravity_gradient(ue, R0, cubesat)
     controls[i] = aerod[i] + solard[i] + gravityd[i]
 
     # propagate orbit
@@ -107,8 +111,8 @@ for i in range(len(time) - 1):
     positions[i+1] = geo.position.m
     velocities[i+1] = geo.velocity.km_per_s * 1000
     subpoint = geo.subpoint()
-    lons[i+1] = subpoint.longitude.radians * 180/np.pi
-    lats[i+1] = subpoint.latitude.radians * 180/np.pi
+    lons[i+1] = subpoint.longitude.degrees
+    lats[i+1] = subpoint.latitude.degrees
     alts[i+1] = subpoint.elevation.m
 
     # propagate attitude state
@@ -116,20 +120,22 @@ for i in range(len(time) - 1):
 
     # do 'tidy' up things at the end of integration (needed for many types of attitude coordinates)
     states[i+1] = ic.mrp_switching(states[i+1])
-    dcm[i+1] = tr.mrp_to_dcm(states[i+1][0])
+    dcm_bn[i+1] = tr.mrp_to_dcm(states[i+1][0])
+    dcm_on[i+1] = ut.inertial_to_orbit_frame(positions[i+1], velocities[i+1])
+    dcm_bo[i+1] = dcm_bn[i+1] @ dcm_on[i+1].T
 
 
 if __name__ == "__main__":
-    omegas = states[:, 1]
-    sigmas = states[:, 0]
-
-
-    def _plot(data, title='', ylabel=''):
-        plt.figure()
-        plt.plot(time, data)
-        plt.title(title)
-        plt.xlabel('Time (s)')
-        plt.ylabel(ylabel)
+    # omegas = states[:, 1]
+    # sigmas = states[:, 0]
+    #
+    #
+    # def _plot(data, title='', ylabel=''):
+    #     plt.figure()
+    #     plt.plot(time, data)
+    #     plt.title(title)
+    #     plt.xlabel('Time (s)')
+    #     plt.ylabel(ylabel)
 
 
     # _plot(omegas, 'angular velocity components', 'angular velocity (rad/s)')
@@ -139,9 +145,9 @@ if __name__ == "__main__":
     # plot the mrp magnitude
     # _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
 
-    _plot(aerod, 'aerodynamic disturbance')
-    _plot(gravityd, 'gravity gradient disturbance')
-    _plot(solard, 'solar radiation pressure disturbance')
+    #_plot(aerod, 'aerodynamic disturbance')
+    #_plot(gravityd, 'gravity gradient disturbance')
+    #_plot(solard, 'solar radiation pressure disturbance')
 
     from animation import AnimateAttitude, DrawingVectors, AdditionalPlots
     num = 10
@@ -149,10 +155,13 @@ if __name__ == "__main__":
     vec2 = DrawingVectors(sun_vec[::num], 'single', color='y', label='sun', length=0.5)
     vec3 = DrawingVectors(velocities[::num], 'single', color='g', label='velocity', length=0.5)
     vec4 = DrawingVectors(mag_field[::num], 'single', color='r', label='magnetic field', length=0.5)
-    ref1 = DrawingVectors(dcm[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=0.2)
+    ref1 = DrawingVectors(dcm_bn[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=0.2)
+    reforbit = DrawingVectors(dcm_on[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Orbit x', 'Orbit y', 'Orbit z'], length=0.2)
+    ref2 = DrawingVectors(dcm_bo[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=0.2)
     plot1 = AdditionalPlots(time[::num], controls[::num], labels=['X', 'Y', 'Z'])
     plot2 = AdditionalPlots(lons[::num], lats[::num], groundtrack=True)
-    a = AnimateAttitude(dcm[::num], draw_vector=[vec4, ref1], additional_plots=plot2, cubesat_model=cubesat)
+    #a = AnimateAttitude(dcm_bo[::num], draw_vector=ref2, additional_plots=plot2, cubesat_model=cubesat)
+    a = AnimateAttitude(dcm_bn[::num], draw_vector=[ref1], additional_plots=plot2, cubesat_model=cubesat)
     a.animate_and_plot()
 
     plt.show()

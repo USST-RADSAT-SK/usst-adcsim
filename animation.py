@@ -40,7 +40,7 @@ class DrawingVectors:
                     (not isinstance(label, str) and isinstance(label, list) and not len(label) == 3) or \
                     (not isinstance(length, str) and isinstance(length, list) and not len(length) == 3):
                 raise Exception("for draw_type == 'axes' color, label, and length should be single values or "
-                                "length 2 lists")
+                                "length 3 lists")
 
         self.data = data
         self.draw_type = draw_type
@@ -93,6 +93,8 @@ class AnimateAttitude:
         self.dcm = np.transpose(dcm.copy(), (0, 2, 1))
         # ^ must get [NB] rather than [BN], because the vertices are in the B frame.
         self.draw_vec = draw_vector
+        if self.draw_vec is None:
+            self.draw_vec = []
         self.single_draw_vec = isinstance(self.draw_vec, DrawingVectors)
         if self.single_draw_vec:
             self.draw_vec = [self.draw_vec]
