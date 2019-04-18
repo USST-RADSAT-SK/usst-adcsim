@@ -32,11 +32,11 @@ class CubeSatEx1(CubeSat):
 class CubeSatSolarPressureEx1(CubeSat):
     def __init__(self, center_of_mass: np.ndarray = np.zeros(3), inertia: np.ndarray = np.diag([2e-3, 2e-3, 8e-3])):
         large_face = Face2D(np.array([[-0.05, -0.1], [0.05, -0.1], [0.05, 0.1], [-0.05, 0.1], [-0.05, -0.1]]).T,
-                            reflection_coeff=0.6)
+                            diff_ref_coeff=1.0, spec_ref_coeff=0.0)
         small_face = Face2D(np.array([[-0.05, -0.05], [0.05, -0.05], [0.05, 0.05], [-0.05, 0.05], [-0.05, -0.05]]).T,
-                            reflection_coeff=0.6)
+                            diff_ref_coeff=1.0, spec_ref_coeff=0.0)
         solar_panel = Face2D(np.array([[-0.04, -0.02], [0.04, -0.02], [0.04, 0.01], [0.03, 0.02], [-0.03, 0.02],
-                                       [-0.04, 0.01], [-0.04, -0.02]]).T, reflection_coeff=1.0)
+                                       [-0.04, 0.01], [-0.04, -0.02]]).T, diff_ref_coeff=0.0, spec_ref_coeff=0.6)
 
         solarp_px = solar_panel + np.array([0., -0.07])
         face_px = Face3D(large_face - solarp_px, '+y+z', np.array([0.05, 0., 0.]), name='+x face', color='g')

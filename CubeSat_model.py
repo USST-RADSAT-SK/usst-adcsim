@@ -5,7 +5,8 @@ from typing import Union, List
 
 
 class Face2D:
-    def __init__(self, vertices: np.ndarray, sigma_n: float=0.8, sigma_t: float=0.8, reflection_coeff: float=0.6):
+    def __init__(self, vertices: np.ndarray, sigma_n: float=0.8, sigma_t: float=0.8, spec_ref_coeff: float=0.6,
+                 diff_ref_coeff: float=0.0):
         """
         Parameters
         ----------
@@ -29,7 +30,8 @@ class Face2D:
 
         self._sigma_n = sigma_n
         self._sigma_t = sigma_t
-        self._reflection_coeff = reflection_coeff
+        self._spec_ref_coeff = spec_ref_coeff
+        self._diff_ref_coeff = diff_ref_coeff
 
     @property
     def vertices(self):
@@ -56,20 +58,25 @@ class Face2D:
         return self._sigma_t
 
     @property
-    def reflection_coeff(self):
-        return self._reflection_coeff
+    def spec_ref_coeff(self):
+        return self._spec_ref_coeff
+
+    @property
+    def diff_ref_coeff(self):
+        return self._diff_ref_coeff
 
     def copy(self):
         return Face2D(vertices=self.vertices.copy(), sigma_n=self.sigma_n, sigma_t=self.sigma_t,
-                      reflection_coeff=self.reflection_coeff)
+                      spec_ref_coeff=self.spec_ref_coeff, diff_ref_coeff=self.diff_ref_coeff)
 
     def __add__(self, other):
         if isinstance(other, np.ndarray):
             return Face2D(self.vertices + other.reshape(2, 1), sigma_n=self.sigma_n, sigma_t=self.sigma_t,
-                          reflection_coeff=self.reflection_coeff)
+                          spec_ref_coeff=self.spec_ref_coeff, diff_ref_coeff=self.diff_ref_coeff)
         elif isinstance(other, Face2D):
             return Face2D(np.concatenate((self.vertices, other.vertices, self.vertices[:, :1]), axis=1),
-                          sigma_n=self.sigma_n, sigma_t=self.sigma_t, reflection_coeff=self.reflection_coeff)
+                          sigma_n=self.sigma_n, sigma_t=self.sigma_t, spec_ref_coeff=self.spec_ref_coeff,
+                          diff_ref_coeff=self.diff_ref_coeff)
         else:
             raise TypeError(f'Cannot add object of type {type(other)} to Face2D object')
 
@@ -86,10 +93,11 @@ class Face2D:
     def __sub__(self, other):
         if isinstance(other, np.ndarray):
             return Face2D(self.vertices - other.reshape(2, 1), sigma_n=self.sigma_n, sigma_t=self.sigma_t,
-                          reflection_coeff=self.reflection_coeff)
+                          spec_ref_coeff=self.spec_ref_coeff, diff_ref_coeff=self.diff_ref_coeff)
         elif isinstance(other, Face2D):
             return Face2D(np.concatenate((self.vertices, other.vertices[:, ::-1], self.vertices[:, :1]), axis=1),
-                          sigma_n=self.sigma_n, sigma_t=self.sigma_t, reflection_coeff=self.reflection_coeff)
+                          sigma_n=self.sigma_n, sigma_t=self.sigma_t, spec_ref_coeff=self.spec_ref_coeff,
+                          diff_ref_coeff=self.diff_ref_coeff)
         else:
             raise TypeError(f'Cannot subtract object of type {type(other)} from Face2D object')
 
@@ -205,8 +213,12 @@ class Face3D:
         return self.face.sigma_t
 
     @property
-    def reflection_coeff(self):
-        return self.face.reflection_coeff
+    def spec_ref_coeff(self):
+        return self.face.spec_ref_coeff
+
+    @property
+    def diff_ref_coeff(self):
+        return self.face.diff_ref_coeff
 
     def rotate(self, dcm: np.ndarray=None, axis: Union[str, np.ndarray]=None, angle: float=None):
         if (dcm is None) and (axis is None or angle is None):
