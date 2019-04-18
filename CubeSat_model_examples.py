@@ -58,10 +58,13 @@ class CubeSatSolarPressureEx1(CubeSat):
 
 class CubeSatAerodynamicEx1(CubeSat):
     def __init__(self):
-        body_large_face = Face2D(np.array([[-0.05, -0.1], [0.05, -0.1], [0.05, 0.1], [-0.05, 0.1], [-0.05, -0.1]]).T)
-        body_small_face = Face2D(np.array([[-0.05, -0.05], [0.05, -0.05], [0.05, 0.05], [-0.05, 0.05], [-0.05, -0.05]]).T)
+        body_large_face = Face2D(np.array([[-0.05, -0.1], [0.05, -0.1], [0.05, 0.1], [-0.05, 0.1], [-0.05, -0.1]]).T,
+                                 diff_ref_coeff=1.0, spec_ref_coeff=0.0)
+        body_small_face = Face2D(np.array([[-0.05, -0.05], [0.05, -0.05], [0.05, 0.05], [-0.05, 0.05], [-0.05, -0.05]]).T,
+                                 diff_ref_coeff=1.0, spec_ref_coeff=0.0)
 
-        solar_panel = Face2D(np.array([[-0.04, -0.02], [0.04, -0.02], [0.04, 0.0064], [0.0264, 0.02], [-0.0264, 0.02], [-0.04, 0.0064], [-0.04, -0.02]]).T, reflection_coeff=1.0)
+        solar_panel = Face2D(np.array([[-0.04, -0.02], [0.04, -0.02], [0.04, 0.0064], [0.0264, 0.02], [-0.0264, 0.02], [-0.04, 0.0064], [-0.04, -0.02]]).T,
+                             diff_ref_coeff=0.0, spec_ref_coeff=0.6)
 
         solar_positions = {
             '+y+z': (np.array([0.05, 0., 0.]), (np.array([0., 0.0709]), np.array([0., 0.0289]), np.array([0., -0.0289]), np.array([0., -0.0709]))),

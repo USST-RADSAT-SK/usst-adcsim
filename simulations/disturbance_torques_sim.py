@@ -10,7 +10,7 @@ from skyfield.api import load, EarthSatellite, utc
 from astropy.coordinates import get_sun
 from astropy.time import Time
 import astropy.units as u
-from CubeSat_model_examples import CubeSatSolarPressureEx1
+from CubeSat_model_examples import CubeSatSolarPressureEx1, CubeSatAerodynamicEx1
 from datetime import datetime, timedelta
 from atmospheric_density import AirDensityModel
 from magnetic_field_model import GeoMag
@@ -21,7 +21,7 @@ end_time = 30000
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
-cubesat = CubeSatSolarPressureEx1()
+cubesat = CubeSatAerodynamicEx1()
 
 # create atmospheric density model
 air_density = AirDensityModel()
@@ -98,10 +98,10 @@ for i in range(len(time) - 1):
 
     # get atmospheric density and velocity vector in body frame (for aerodynamic torque)
     density[i] = air_density.air_mass_density(date=time_track, alt=alts[i]/1000, g_lat=lats[i], g_long=lons[i])
-    vel_body = dcm_bn[i] @ velocities[i]
+    vel_body = dcm_bn[i] @ dt.get_air_velocity(velocities[i], positions[i])
 
     # get disturbance torque
-    # aerod[i] = dt.aerodynamic_torque(vel_body, density[i], cubesat)
+    aerod[i] = dt.aerodynamic_torque(vel_body, density[i], cubesat)
     solard[i] = dt.solar_pressure(sun_vec_body[i], sun_obj.to(u.meter).value, positions[i], cubesat)
     #gravityd[i] = dt.gravity_gradient(ue, R0, cubesat)
     controls[i] = aerod[i] + solard[i] + gravityd[i]
@@ -165,7 +165,7 @@ if __name__ == "__main__":
     plot1 = AdditionalPlots(time[::num], controls[::num], labels=['X', 'Y', 'Z'])
     plot2 = AdditionalPlots(lons[::num], lats[::num], groundtrack=True)
     #a = AnimateAttitude(dcm_bo[::num], draw_vector=ref2, additional_plots=plot2, cubesat_model=cubesat)
-    a = AnimateAttitude(dcm_bn[::num], draw_vector=[ref1, vec2], additional_plots=plot2, cubesat_model=cubesat)
+    a = AnimateAttitude(dcm_bn[::num], draw_vector=[ref1, vec2, vec3], additional_plots=plot2, cubesat_model=cubesat)
     a.animate_and_plot()
 
     plt.show()

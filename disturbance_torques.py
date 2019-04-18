@@ -4,12 +4,23 @@ from CubeSat_model import CubeSat
 
 a_solar_constant = (3.823 * 10**26) / (3 * (10 ** 8)) / 4 / np.pi
 a_gravity_gradient_constant = 3 * 3.986004418 * (10**14)
+a_earth_rotational_constant = 0.000072921158553
+vec_thing = a_earth_rotational_constant*np.array([0, 0, 1])
 
 # Note: it appears that ut.cross_product_operator is a significant amount faster than using np.cross()
 
 
 def gravity_gradient(ue, r0, cubesat: CubeSat):
     return (a_gravity_gradient_constant/(r0**3)) * (ut.cross_product_operator(ue) @ cubesat.inertia @ ue)
+
+
+def get_air_velocity(vel_inertial, pos_inertial):
+    # this would be equivalent to dcm @ (vel_inertial - ut.cross_product_operator(vec_thing) @ pos_inertial)
+    # equation 3.160 and 3.161 in Landis Markley's Fundamentals of Spacecraft Attitude Determination and Control
+    # textbook
+    return np.array([vel_inertial[0] + a_earth_rotational_constant*pos_inertial[1],
+                     vel_inertial[1] - a_earth_rotational_constant*pos_inertial[0],
+                     vel_inertial[2]])
 
 
 def aerodynamic_torque(v, rho, cubesat: CubeSat):
