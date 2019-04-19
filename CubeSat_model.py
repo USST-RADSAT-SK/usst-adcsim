@@ -6,7 +6,7 @@ from typing import Union, List
 
 class Face2D:
     def __init__(self, vertices: np.ndarray, sigma_n: float=0.8, sigma_t: float=0.8, spec_ref_coeff: float=0.6,
-                 diff_ref_coeff: float=0.0):
+                 diff_ref_coeff: float=0.0, accommodation_coeff: float=0.9):
         """
         Parameters
         ----------
@@ -32,6 +32,7 @@ class Face2D:
         self._sigma_t = sigma_t
         self._spec_ref_coeff = spec_ref_coeff
         self._diff_ref_coeff = diff_ref_coeff
+        self._accommodation_coeff = accommodation_coeff
 
     @property
     def vertices(self):
@@ -58,6 +59,10 @@ class Face2D:
         return self._sigma_t
 
     @property
+    def accommodation_coeff(self):
+        return self._accommodation_coeff
+
+    @property
     def spec_ref_coeff(self):
         return self._spec_ref_coeff
 
@@ -67,16 +72,18 @@ class Face2D:
 
     def copy(self):
         return Face2D(vertices=self.vertices.copy(), sigma_n=self.sigma_n, sigma_t=self.sigma_t,
-                      spec_ref_coeff=self.spec_ref_coeff, diff_ref_coeff=self.diff_ref_coeff)
+                      spec_ref_coeff=self.spec_ref_coeff, diff_ref_coeff=self.diff_ref_coeff,
+                      accommodation_coeff=self.accommodation_coeff)
 
     def __add__(self, other):
         if isinstance(other, np.ndarray):
             return Face2D(self.vertices + other.reshape(2, 1), sigma_n=self.sigma_n, sigma_t=self.sigma_t,
-                          spec_ref_coeff=self.spec_ref_coeff, diff_ref_coeff=self.diff_ref_coeff)
+                          spec_ref_coeff=self.spec_ref_coeff, diff_ref_coeff=self.diff_ref_coeff,
+                          accommodation_coeff=self.accommodation_coeff)
         elif isinstance(other, Face2D):
             return Face2D(np.concatenate((self.vertices, other.vertices, self.vertices[:, :1]), axis=1),
                           sigma_n=self.sigma_n, sigma_t=self.sigma_t, spec_ref_coeff=self.spec_ref_coeff,
-                          diff_ref_coeff=self.diff_ref_coeff)
+                          diff_ref_coeff=self.diff_ref_coeff, accommodation_coeff=self.accommodation_coeff)
         else:
             raise TypeError(f'Cannot add object of type {type(other)} to Face2D object')
 
@@ -93,11 +100,12 @@ class Face2D:
     def __sub__(self, other):
         if isinstance(other, np.ndarray):
             return Face2D(self.vertices - other.reshape(2, 1), sigma_n=self.sigma_n, sigma_t=self.sigma_t,
-                          spec_ref_coeff=self.spec_ref_coeff, diff_ref_coeff=self.diff_ref_coeff)
+                          spec_ref_coeff=self.spec_ref_coeff, diff_ref_coeff=self.diff_ref_coeff,
+                          accommodation_coeff=self.accommodation_coeff)
         elif isinstance(other, Face2D):
             return Face2D(np.concatenate((self.vertices, other.vertices[:, ::-1], self.vertices[:, :1]), axis=1),
                           sigma_n=self.sigma_n, sigma_t=self.sigma_t, spec_ref_coeff=self.spec_ref_coeff,
-                          diff_ref_coeff=self.diff_ref_coeff)
+                          diff_ref_coeff=self.diff_ref_coeff, accommodation_coeff=self.accommodation_coeff)
         else:
             raise TypeError(f'Cannot subtract object of type {type(other)} from Face2D object')
 
@@ -211,6 +219,10 @@ class Face3D:
     @property
     def sigma_t(self):
         return self.face.sigma_t
+
+    @property
+    def accommodation_coeff(self):
+        return self.face.accommodation_coeff
 
     @property
     def spec_ref_coeff(self):

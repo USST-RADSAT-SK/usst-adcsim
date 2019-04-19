@@ -41,8 +41,11 @@ def aerodynamic_torque(v, rho, cubesat: CubeSat):
         mu = np.dot(ev, face.normal)  # cosine of angle between velocity and surface normal
         if mu >= 0:
             # units N, see eq'n 2-2 in NASA SP-8058 Spacecraft Aerodynamic Torques
-            force = -rho * vm**2 * (0.4 * mu**2 * face.normal + 0.8 * mu * ev) * \
-                    face.area  # units N, see eq'n 2-2 in NASA SP-8058 Spacecraft Aerodynamic Torques
+            force = -rho * vm**2 * (2 * (1-face.accommodation_coeff) * mu**2 * face.normal +
+                                    face.accommodation_coeff * mu * ev) * face.area  # units N, see eq'n 2-2 in NASA SP-8058 Spacecraft Aerodynamic Torques
+            # This addition is the diffuse term in Chris Robson's thesis.
+            # note: I think Chris is missing a second cosine in the specular reflection equation
+            force += face.accommodation_coeff * rho * vm * (0.05*vm) * face.area * mu * face.normal
             net_torque += ut.cross_product_operator(face.centroid - cubesat.center_of_mass) @ force  # units N.m
 
     return net_torque
@@ -70,11 +73,12 @@ def solar_pressure(sun_vec, sun_vec_inertial, satellite_vec_inertial, cubesat: C
             #               (ut.cross_product_operator(face.centroid - cubesat.center_of_mass) @
             #                -face.normal)  # force is opposite to area
 
-            # calculate the solar radiation pressure torque using equation 3.167 in Landis Markley's Fundamentals of
+            # Calculate the solar radiation pressure torque using equation 3.167 in Landis Markley's Fundamentals of
             # Spacecraft Attitude Determination and Control textbook. This equation is equivalent to Chris Robson's
-            # equations 3-55 to 3-58.
-            net_torque += ut.cross_product_operator(face.centroid - cubesat.center_of_mass) @ \
-                (-const * face.area * cos_theta * (2*(face.diff_ref_coeff/3 + face.spec_ref_coeff*cos_theta)*face.normal
-                                                   + (1 - face.spec_ref_coeff)*sun_vec))
+            # equations 3-55 to 3-58. Note: I think Chris is missing a second cosine in the specular reflection equation
+            force = -const * face.area * cos_theta * \
+                    (2*(face.diff_ref_coeff/3 + face.spec_ref_coeff*cos_theta)*face.normal
+                     + (1 - face.spec_ref_coeff)*sun_vec)
+            net_torque += ut.cross_product_operator(face.centroid - cubesat.center_of_mass) @ force
 
     return net_torque
