@@ -26,11 +26,13 @@ class CubeSatEx1(CubeSat):
         solar_mz = Face3D(solar_panel, '-x+y', np.array([0., 0., -0.1]), name='-z solar panel', color='k')
 
         faces = [value for value in locals().values() if isinstance(value, Face3D)]
-        super().__init__(faces, center_of_mass=np.zeros(3), inertia=np.diag([2e-3, 2e-3, 8e-3]))
+        super().__init__(faces, center_of_mass=np.zeros(3), inertia=np.diag([2e-3, 2e-3, 8e-3]),
+                         residual_magnetic_moment=np.zeros(3))
 
 
 class CubeSatSolarPressureEx1(CubeSat):
-    def __init__(self, center_of_mass: np.ndarray = np.zeros(3), inertia: np.ndarray = np.diag([2e-3, 2e-3, 8e-3])):
+    def __init__(self, center_of_mass: np.ndarray = np.zeros(3), inertia: np.ndarray = np.diag([2e-3, 2e-3, 8e-3]),
+                 residual_magnetic_moment: np.ndarray = np.zeros(3)):
         large_face = Face2D(np.array([[-0.05, -0.1], [0.05, -0.1], [0.05, 0.1], [-0.05, 0.1], [-0.05, -0.1]]).T,
                             diff_ref_coeff=1.0, spec_ref_coeff=0.0)
         small_face = Face2D(np.array([[-0.05, -0.05], [0.05, -0.05], [0.05, 0.05], [-0.05, 0.05], [-0.05, -0.05]]).T,
@@ -53,7 +55,8 @@ class CubeSatSolarPressureEx1(CubeSat):
         face_mz = Face3D(small_face, '-x+y', np.array([0., 0., -0.1]), name='-z face', color='g')
 
         faces = [value for value in locals().values() if isinstance(value, Face3D)]
-        super().__init__(faces, center_of_mass=center_of_mass, inertia=inertia)
+        super().__init__(faces, center_of_mass=center_of_mass, inertia=inertia,
+                         residual_magnetic_moment=residual_magnetic_moment)
 
 
 class CubeSatAerodynamicEx1(CubeSat):
@@ -117,7 +120,8 @@ class CubeSatAerodynamicEx1(CubeSat):
         short_antenna_mx.translate(np.array([-50., -22., 97.])/1e3)
 
         faces = body_panels + solar_panels + short_antenna_px.faces + short_antenna_mx.faces + long_antenna_py.faces + long_antenna_my.faces
-        super().__init__(faces, center_of_mass=np.zeros(3), inertia=np.diag([2e-3, 2e-3, 8e-3]))
+        super().__init__(faces, center_of_mass=np.zeros(3), inertia=np.diag([2e-3, 2e-3, 8e-3]),
+                         residual_magnetic_moment=np.zeros(3))
 
 
 if __name__ == "__main__":

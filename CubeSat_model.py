@@ -338,10 +338,12 @@ class Polygons3D:
 
 
 class CubeSat(Polygons3D):
-    def __init__(self, faces: List[Face3D], center_of_mass: np.ndarray, inertia: np.ndarray):
+    def __init__(self, faces: List[Face3D], center_of_mass: np.ndarray, inertia: np.ndarray,
+                 residual_magnetic_moment: np.ndarray):
         self._com = center_of_mass
         self._inertia = inertia
         self._inertia_inv = np.linalg.inv(inertia)
+        self._residual_magnetic_moment = residual_magnetic_moment
         super().__init__(faces)
 
     @property
@@ -355,6 +357,10 @@ class CubeSat(Polygons3D):
     @property
     def inertia_inv(self):
         return self._inertia_inv
+
+    @property
+    def residual_magnetic_moment(self):
+        return self._residual_magnetic_moment
 
 
 if __name__ == '__main__':

@@ -5,7 +5,6 @@ from CubeSat_model import CubeSat
 a_solar_constant = (3.823 * 10**26) / (3 * (10 ** 8)) / 4 / np.pi
 a_gravity_gradient_constant = 3 * 3.986004418 * (10**14)
 a_earth_rotational_constant = 0.000072921158553
-vec_thing = a_earth_rotational_constant*np.array([0, 0, 1])
 
 # Note: it appears that ut.cross_product_operator is a significant amount faster than using np.cross()
 
@@ -15,7 +14,7 @@ def gravity_gradient(ue, r0, cubesat: CubeSat):
 
 
 def get_air_velocity(vel_inertial, pos_inertial):
-    # this would be equivalent to dcm @ (vel_inertial - ut.cross_product_operator(vec_thing) @ pos_inertial)
+    # this would be equivalent to dcm @ (vel_inertial - ut.cross_product_operator(a_earth_rotational_constant*np.array([0, 0, 1])) @ pos_inertial)
     # equation 3.160 and 3.161 in Landis Markley's Fundamentals of Spacecraft Attitude Determination and Control
     # textbook
     return np.array([vel_inertial[0] + a_earth_rotational_constant*pos_inertial[1],
@@ -43,7 +42,7 @@ def aerodynamic_torque(v, rho, cubesat: CubeSat):
             # units N, see eq'n 2-2 in NASA SP-8058 Spacecraft Aerodynamic Torques
             force = -rho * vm**2 * (2 * (1-face.accommodation_coeff) * mu**2 * face.normal +
                                     face.accommodation_coeff * mu * ev) * face.area  # units N, see eq'n 2-2 in NASA SP-8058 Spacecraft Aerodynamic Torques
-            # This addition is the diffuse term in Chris Robson's thesis.
+            # This addition is the diffuse term in Chris Robson's thesis. Just use 5 % of vm for now for the diffuse vel
             # note: I think Chris is missing a second cosine in the specular reflection equation
             force += face.accommodation_coeff * rho * vm * (0.05*vm) * face.area * mu * face.normal
             net_torque += ut.cross_product_operator(face.centroid - cubesat.center_of_mass) @ force  # units N.m
@@ -82,3 +81,7 @@ def solar_pressure(sun_vec, sun_vec_inertial, satellite_vec_inertial, cubesat: C
             net_torque += ut.cross_product_operator(face.centroid - cubesat.center_of_mass) @ force
 
     return net_torque
+
+
+def residual_magnetic(b, cubesat: CubeSat):
+    return ut.cross_product_operator(cubesat.residual_magnetic_moment) @ b  # both vectors must be in the body frame

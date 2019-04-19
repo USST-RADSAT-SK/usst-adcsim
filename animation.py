@@ -3,6 +3,7 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 from typing import List, Union
+from CubeSat_model import CubeSat
 
 
 class DrawingVectors:
@@ -89,7 +90,7 @@ class AdditionalPlots:
 class AnimateAttitude:
     def __init__(self, dcm, draw_vector: Union[List[DrawingVectors], DrawingVectors] = None,
                  additional_plots: Union[List[AdditionalPlots], AdditionalPlots] = None,
-                 x_mag=1, y_mag=1, z_mag=2, cubesat_model=None):
+                 x_mag=1, y_mag=1, z_mag=2, cubesat_model: CubeSat = None):
         self.dcm = np.transpose(dcm.copy(), (0, 2, 1))
         # ^ must get [NB] rather than [BN], because the vertices are in the B frame.
         self.draw_vec = draw_vector
@@ -170,7 +171,10 @@ class AnimateAttitude:
 
     @staticmethod
     def _animate_draw_vec(ax, i, vect):
-        ve = vect.data[i]
+        if vect.changing:
+            ve = vect.data[i]
+        else:
+            ve = vect.data
         if vect.draw_type == 'single':
             ve = 2 * ve / np.linalg.norm(ve)
             ax.quiver(0, 0, 0, ve[0], ve[1], ve[2], length=vect.length[0], color=vect.color[0], label=vect.label[0])
@@ -233,3 +237,84 @@ class AnimateAttitude:
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         self._animate(ax, index)
+
+
+class AnimateAttitudeInside:
+    def __init__(self, cubesat_model: CubeSat):
+        self.cubesat_model = cubesat_model
+        self.facecolors = []
+        for face in cubesat_model.faces:
+            self.facecolors.append(face.color)
+
+    def _animate(self, ax, dcm, draw_vector):
+        ax.set_xlim(-0.2, 0.2)  # hardcoded for now
+        ax.set_ylim(-0.2, 0.2)
+        ax.set_zlim(-0.2, 0.2)
+
+        verts = []
+        for face in self.cubesat_model.faces:
+            verts.append((dcm @ np.array(face.vertices)).T.tolist())
+
+        # plot sides
+        ax.add_collection3d(Poly3DCollection(verts, facecolors=self.facecolors, linewidths=1, edgecolors='r', alpha=.25))
+        # plot arrows
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        if draw_vector is not None:
+            for vect in draw_vector:
+                self._animate_draw_vec(ax, vect)
+        ax.legend()
+
+    def animate(self, fig, dcm, draw_vector: Union[List[DrawingVectors], DrawingVectors] = None):
+        plt.clf()
+        ax = fig.add_subplot(111, projection='3d')
+        self._animate(ax, dcm, draw_vector)
+        plt.pause(0.00000000001)
+
+    def animate_and_plot(self, fig, dcm, draw_vector: Union[List[DrawingVectors], DrawingVectors] = None,
+                         additional_plots: Union[List[AdditionalPlots], AdditionalPlots] = None):
+        n = len(additional_plots)
+        plt.clf()
+        ax = fig.add_subplot(1, 2, 1, projection='3d')
+        self._animate(ax, dcm, draw_vector)
+        for j, ap in enumerate(additional_plots):
+            ax = fig.add_subplot(n, 2, 2*(j+1), projection=ap.projection)
+            if ap.groundtrack:
+                self._plot_ground_track(ax, ap)
+            else:
+                self._plot(ax, ap)
+        plt.pause(0.00000000001)
+
+    @staticmethod
+    def _animate_draw_vec(ax, vect):
+        ve = vect.data
+        if vect.draw_type == 'single':
+            ve = 2 * ve / np.linalg.norm(ve)
+            ax.quiver(0, 0, 0, ve[0], ve[1], ve[2], length=vect.length[0], color=vect.color[0], label=vect.label[0])
+        if vect.draw_type == 'double':
+            ve = 2 * ve / np.linalg.norm(ve)
+            ax.quiver(0, 0, 0, ve[0], ve[1], ve[2], length=vect.length[0], color=vect.color[0], label=vect.label[0])
+            ax.quiver(0, 0, 0, -ve[0], -ve[1], -ve[2], length=vect.length[1], color=vect.color[1],
+                      label='- ' + vect.label[1])
+        if vect.draw_type == 'axes':
+            for j in range(3):
+                ax.quiver(0, 0, 0, ve[j, 0], ve[j, 1], ve[j, 2], length=vect.length[j], color=vect.color[j],
+                          label=vect.label[j])
+
+    @staticmethod
+    def _plot(ax, ap):
+        ax.set_xlim(ap.xdata.min(), ap.xdata.max())
+        ax.set_ylim(ap.ydata.min(), ap.ydata.max())
+        ax.plot(ap.xdata, ap.ydata)
+        ax.set_title(ap.title)
+        ax.set_ylabel(ap.ylabel)
+        ax.set_xlabel(ap.xlabel)
+        plt.gca().legend(ap.labels)
+
+    @staticmethod
+    def _plot_ground_track(ax, ap):
+        ax.coastlines()
+        ax.set_xlim(ap.xmin, ap.xmax)
+        ax.set_ylim(ap.ymin, ap.ymax)
+        ax.plot(ap.xdata, ap.ydata, '.')
