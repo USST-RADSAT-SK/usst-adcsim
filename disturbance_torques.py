@@ -74,7 +74,7 @@ def solar_pressure(sun_vec, sun_vec_inertial, satellite_vec_inertial, cubesat: C
             # Spacecraft Attitude Determination and Control textbook. This equation is equivalent to Chris Robson's
             # equations 3-55 to 3-58.
             net_torque += ut.cross_product_operator(face.centroid - cubesat.center_of_mass) @ \
-                (-const * face.area * (2*(face.diff_ref_coeff/3 + face.spec_ref_coeff*cos_theta)*face.normal
-                                       + (1 - face.spec_ref_coeff)*sun_vec))
+                (-const * face.area * cos_theta * (2*(face.diff_ref_coeff/3 + face.spec_ref_coeff*cos_theta)*face.normal
+                                                   + (1 - face.spec_ref_coeff)*sun_vec))
 
     return net_torque
