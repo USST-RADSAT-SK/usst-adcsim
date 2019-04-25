@@ -18,11 +18,11 @@ from animation import AnimateAttitudeInside, DrawingVectors, AdditionalPlots
 
 # declare time step for integration
 time_step = 0.1
-end_time = 20000
+end_time = 2000
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
-cubesat = CubeSatSolarPressureEx1(residual_magnetic_moment=np.array([0, 0, 1.0]))
+cubesat = CubeSatSolarPressureEx1(inertia=np.diag([3e-3, 5e-3, 2e-6]), residual_magnetic_moment=np.array([0, 0, 1.0]))
 
 # create atmospheric density model
 air_density = AirDensityModel()
@@ -32,7 +32,7 @@ geomag = GeoMag()
 
 # create object for animation inside for loop
 plts = AnimateAttitudeInside(cubesat)
-mag_vec_animate = DrawingVectors(np.zeros(3), 'single', color='r', label='magnetic field', length=0.5)
+nadir_vec = DrawingVectors(np.zeros(3), 'single', color='b', label='nadir', length=0.5)
 vel_vec_animate = DrawingVectors(np.zeros(3), 'single', color='g', label='velocity', length=0.5)
 fig = plt.figure(figsize=(15, 5))
 
@@ -78,7 +78,7 @@ alts[0] = subpoint.elevation.m
 dcm0 = ut.initial_align_gravity_stabilization(positions[0], velocities[0])
 sigma0 = tr.dcm_to_mrp(dcm0)
 # initialize angular velocity so that it is approximately the speed of rotation around the earth
-omega0_body = np.array([0.01, 0, 0])
+omega0_body = np.array([0, -0.00113, 0])
 omega0 = dcm0.T @ omega0_body
 states[0] = [sigma0, omega0]
 dcm_bn[0] = tr.mrp_to_dcm(states[0][0])
@@ -86,7 +86,6 @@ dcm_on[0] = ut.inertial_to_orbit_frame(positions[0], velocities[0])
 dcm_bo[0] = dcm_bn[0] @ dcm_on[0].T
 
 ground_track_animate = AdditionalPlots(np.array(lons[0]), np.array(lats[0]), groundtrack=True)
-omega_animate = AdditionalPlots(time[0], omega0.reshape(1, 3))
 
 # the integration
 for i in range(len(time) - 1):
@@ -114,8 +113,8 @@ for i in range(len(time) - 1):
     # get disturbance torque
     #aerod[i] = dt.aerodynamic_torque(vel_body, density[i], cubesat)
     #solard[i] = dt.solar_pressure(sun_vec_body[i], sun_obj.to(u.meter).value, positions[i], cubesat)
-    #gravityd[i] = dt.gravity_gradient(ue, R0, cubesat)
-    magneticd[i] = dt.residual_magnetic(mag_field_body[i], cubesat)
+    gravityd[i] = dt.gravity_gradient(ue, R0, cubesat)
+    #magneticd[i] = dt.residual_magnetic(mag_field_body[i], cubesat)
     controls[i] = aerod[i] + solard[i] + gravityd[i] + magneticd[i]
 
     # propagate orbit
@@ -141,15 +140,13 @@ for i in range(len(time) - 1):
     dcm_bo[i+1] = dcm_bn[i+1] @ dcm_on[i+1].T
 
     # animate
-    if i % 100 == 0:
-        mag_vec_animate.data = mag_field[i]
+    if i % 10 == 0:
+        nadir_vec.data = nadir[i]
         vel_vec_animate.data = velocities[i]
         ground_track_animate.xdata = np.append(ground_track_animate.xdata, lons[i])
         ground_track_animate.ydata = np.append(ground_track_animate.ydata, lats[i])
-        omega_animate.ydata = np.append(omega_animate.ydata, states[i][1].reshape(1, 3), axis=0)
-        omega_animate.xdata = np.append(omega_animate.xdata, time[i])
-        plts.animate_and_plot(fig, dcm_bn[i], draw_vector=[mag_vec_animate, vel_vec_animate],
-                              additional_plots=[ground_track_animate, omega_animate])
+        plts.animate_and_plot(fig, dcm_bn[i], draw_vector=[nadir_vec, vel_vec_animate],
+                              additional_plots=[ground_track_animate])
 
 
 if __name__ == "__main__":
@@ -178,7 +175,7 @@ if __name__ == "__main__":
     #_plot(magneticd, 'residual magnetic disturbance')
 
     from animation import AnimateAttitude, DrawingVectors, AdditionalPlots
-    num = 100
+    num = 10
     vec1 = DrawingVectors(nadir[::num], 'single', color='b', label='nadir', length=0.5)
     vec2 = DrawingVectors(sun_vec[::num], 'single', color='y', label='sun', length=0.5)
     vec3 = DrawingVectors(velocities[::num], 'single', color='g', label='velocity', length=0.5)
@@ -189,7 +186,7 @@ if __name__ == "__main__":
     plot1 = AdditionalPlots(time[::num], controls[::num], labels=['X', 'Y', 'Z'])
     plot2 = AdditionalPlots(lons[::num], lats[::num], groundtrack=True)
     #a = AnimateAttitude(dcm_bo[::num], draw_vector=ref2, additional_plots=plot2, cubesat_model=cubesat)
-    a = AnimateAttitude(dcm_bn[::num], draw_vector=[ref1, vec2, vec3, vec4], additional_plots=plot2, cubesat_model=cubesat)
+    a = AnimateAttitude(dcm_bn[::num], draw_vector=[ref1, vec1, vec3, vec4], additional_plots=plot2, cubesat_model=cubesat)
     a.animate_and_plot()
 
     plt.show()
