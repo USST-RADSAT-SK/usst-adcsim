@@ -3,6 +3,7 @@ import numpy as np
 from CubeSat_model import CubeSat
 
 a_solar_constant = (3.823 * 10**26) / (3 * (10 ** 8)) / 4 / np.pi
+a_solar_constant_2 = (3.823 * 10**26) / 4 / np.pi
 a_gravity_gradient_constant = 3 * 3.986004418 * (10**14)
 a_earth_rotational_constant = 0.000072921158553
 
@@ -81,6 +82,20 @@ def solar_pressure(sun_vec, sun_vec_inertial, satellite_vec_inertial, cubesat: C
             net_torque += ut.cross_product_operator(face.centroid - cubesat.center_of_mass) @ force
 
     return net_torque
+
+
+# This function is here because it could go together with the solar pressure disturbance torque function.
+def solar_panel_power(sun_vec, sun_vec_inertial, satellite_vec_inertial, cubesat: CubeSat):
+    watt_per_meter = a_solar_constant_2 / (np.linalg.norm(sun_vec_inertial - satellite_vec_inertial)) ** 2
+    power = 0
+
+    for face in cubesat.solar_panel_faces:
+        cos_theta = face.normal @ sun_vec
+
+        if cos_theta > 0:
+            power += watt_per_meter * face.area * cos_theta * face.solar_power_efficiency
+
+    return power
 
 
 def residual_magnetic(b, cubesat: CubeSat):

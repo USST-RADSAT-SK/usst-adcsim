@@ -6,7 +6,7 @@ from typing import Union, List
 
 class Face2D:
     def __init__(self, vertices: np.ndarray, sigma_n: float=0.8, sigma_t: float=0.8, spec_ref_coeff: float=0.6,
-                 diff_ref_coeff: float=0.0, accommodation_coeff: float=0.9):
+                 diff_ref_coeff: float=0.0, accommodation_coeff: float=0.9, solar_power_efficiency: float=None):
         """
         Parameters
         ----------
@@ -33,6 +33,13 @@ class Face2D:
         self._spec_ref_coeff = spec_ref_coeff
         self._diff_ref_coeff = diff_ref_coeff
         self._accommodation_coeff = accommodation_coeff
+        self._solar_power_efficiency = solar_power_efficiency
+        if self._solar_power_efficiency is not None:
+            self.is_solar_panel = True
+        else:
+            self.is_solar_panel = False
+        self._args_tuple = (sigma_n, sigma_t, spec_ref_coeff, diff_ref_coeff, accommodation_coeff,
+                            solar_power_efficiency)
 
     @property
     def vertices(self):
@@ -70,20 +77,19 @@ class Face2D:
     def diff_ref_coeff(self):
         return self._diff_ref_coeff
 
+    @property
+    def solar_power_efficiency(self):
+        return self._solar_power_efficiency
+
     def copy(self):
-        return Face2D(vertices=self.vertices.copy(), sigma_n=self.sigma_n, sigma_t=self.sigma_t,
-                      spec_ref_coeff=self.spec_ref_coeff, diff_ref_coeff=self.diff_ref_coeff,
-                      accommodation_coeff=self.accommodation_coeff)
+        return Face2D(self.vertices.copy(), *self._args_tuple)
 
     def __add__(self, other):
         if isinstance(other, np.ndarray):
-            return Face2D(self.vertices + other.reshape(2, 1), sigma_n=self.sigma_n, sigma_t=self.sigma_t,
-                          spec_ref_coeff=self.spec_ref_coeff, diff_ref_coeff=self.diff_ref_coeff,
-                          accommodation_coeff=self.accommodation_coeff)
+            return Face2D(self.vertices + other.reshape(2, 1), *self._args_tuple)
         elif isinstance(other, Face2D):
             return Face2D(np.concatenate((self.vertices, other.vertices, self.vertices[:, :1]), axis=1),
-                          sigma_n=self.sigma_n, sigma_t=self.sigma_t, spec_ref_coeff=self.spec_ref_coeff,
-                          diff_ref_coeff=self.diff_ref_coeff, accommodation_coeff=self.accommodation_coeff)
+                          *self._args_tuple)
         else:
             raise TypeError(f'Cannot add object of type {type(other)} to Face2D object')
 
@@ -99,13 +105,10 @@ class Face2D:
 
     def __sub__(self, other):
         if isinstance(other, np.ndarray):
-            return Face2D(self.vertices - other.reshape(2, 1), sigma_n=self.sigma_n, sigma_t=self.sigma_t,
-                          spec_ref_coeff=self.spec_ref_coeff, diff_ref_coeff=self.diff_ref_coeff,
-                          accommodation_coeff=self.accommodation_coeff)
+            return Face2D(self.vertices - other.reshape(2, 1), *self._args_tuple)
         elif isinstance(other, Face2D):
             return Face2D(np.concatenate((self.vertices, other.vertices[:, ::-1], self.vertices[:, :1]), axis=1),
-                          sigma_n=self.sigma_n, sigma_t=self.sigma_t, spec_ref_coeff=self.spec_ref_coeff,
-                          diff_ref_coeff=self.diff_ref_coeff, accommodation_coeff=self.accommodation_coeff)
+                          *self._args_tuple)
         else:
             raise TypeError(f'Cannot subtract object of type {type(other)} from Face2D object')
 
@@ -149,6 +152,7 @@ class Face3D:
         self._orientation = np.eye(3)
         self._translation = np.zeros((3, 1))
         self.face = face
+        self.is_solar_panel = self.face.is_solar_panel
         self.orientation = orientation
         self.translation = translation
 
@@ -232,6 +236,10 @@ class Face3D:
     def diff_ref_coeff(self):
         return self.face.diff_ref_coeff
 
+    @property
+    def solar_power_efficiency(self):
+        return self.face.solar_power_efficiency
+
     def rotate(self, dcm: np.ndarray=None, axis: Union[str, np.ndarray]=None, angle: float=None):
         if (dcm is None) and (axis is None or angle is None):
             print('Face3D.rotate: EITHER THE DCM OR BOTH THE AXIS AND THE ANGLE MUST BE SPECIFIED')
@@ -297,6 +305,7 @@ class Face3D:
 class Polygons3D:
     def __init__(self, faces: List[Face3D]):
         self._faces = [face.copy() for face in faces]
+        self.solar_panel_faces = [face.copy() for face in faces if face.is_solar_panel]
 
     def plot(self):
         max = -np.inf
