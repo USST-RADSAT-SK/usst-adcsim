@@ -19,18 +19,18 @@ class HysteresisRod:
         return 2 * self.bs * np.arctan(self.k * (h - self.hc))/np.pi
 
     def b_field_top_derivative(self, h):
-        return 2 * self.bs / (self.k*(h + self.hc)**2 + 1) / np.pi
+        return 2 * self.bs * self.k / (1 + (h + self.hc)**2 * self.k**2) / np.pi
 
     def b_field_bottom_derivative(self, h):
-        return 2 * self.bs / (self.k*(h - self.hc)**2 + 1) / np.pi
+        return 2 * self.bs * self.k / (1 + (h - self.hc)**2 * self.k**2) / np.pi
 
     def mag_process_positive_h(self, h, b):
-        return u0 + (self.b_field_bottom(h) - b) * (self.b_field_top_derivative(h) - u0) / \
-               (self.b_field_bottom(h) - self.b_field_top(h))
+        return u0 + (self.b_field_top(h) - b) * (self.b_field_bottom_derivative(h) - u0) / \
+               (self.b_field_top(h) - self.b_field_bottom(h))
 
     def mag_process_negative_h(self, h, b):
-        return u0 + (b - self.b_field_top(h)) * (self.b_field_bottom_derivative(h) - u0) / \
-               (self.b_field_bottom(h) - self.b_field_top(h))
+        return u0 + (b - self.b_field_bottom(h)) * (self.b_field_top_derivative(h) - u0) / \
+               (self.b_field_top(h) - self.b_field_bottom(h))
 
     def plot_limiting_cycle(self, hmin, hmax):
         import matplotlib.pyplot as plt
@@ -71,13 +71,15 @@ if __name__ == "__main__":
     from integrators import rk4_general
 
     hyst_rod = HysteresisRod(0.8, 1.5, 80)
-    hyst_rod.plot_limiting_cycle(-600, 600)
+    # hyst_rod.plot_limiting_cycle(-600, 600)
     hyst_rod.plot_limiting_cycle_derivative(-600, 600)
 
-    b = np.zeros(1000)
-    h = np.linspace(0, 600, 1000)
-    step = h[1] - h[0]
+    # h = np.linspace(0, 600, 1000)
+    h = np.concatenate([np.arange(0, 600, 0.5), np.arange(600, -600, -0.5), np.arange(-600, 0, 0.5)])
+    b = np.zeros_like(h)
+
     for i, da in enumerate(h[:-1]):
+        step = h[i + 1] - h[i]
         if h[i+1] >= h[i]:
             print('p')
             b[i + 1] = b[i] + hyst_rod.mag_process_positive_h(h[i+1], b[i]) * step
@@ -87,6 +89,7 @@ if __name__ == "__main__":
             b[i + 1] = b[i] + hyst_rod.mag_process_negative_h(h[i + 1], b[i]) * step
             #b[i + 1] = rk4_general(hyst_rod.mag_process_negative_h, step, h[i + 1], b[i])
 
-    plt.figure()
-    plt.plot(h, b)
+    # plt.figure()
+    hyst_rod.plot_limiting_cycle(-600, 600)
+    plt.plot(h, b, color='red', linestyle='--')
     plt.show()
