@@ -11,6 +11,7 @@ from astropy.coordinates import get_sun
 from astropy.time import Time
 import astropy.units as u
 from CubeSat_model_examples import CubeSatSolarPressureEx1, CubeSatAerodynamicEx1
+from hysteresis_rod import HysteresisRod
 from datetime import datetime, timedelta
 from atmospheric_density import AirDensityModel
 from magnetic_field_model import GeoMag
@@ -22,7 +23,10 @@ end_time = 30000
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
-cubesat = CubeSatSolarPressureEx1(inertia=np.diag([3e-3, 5e-3, 2e-4]), residual_magnetic_moment=np.array([0, 0, 1.0]))
+rod1 = HysteresisRod(0.4, 2.5, 12, volume=0.09*np.pi*(0.0005)**2, mass=0.001, integration_size=len(time),
+                     scale_factor=10**-2)
+cubesat = CubeSatSolarPressureEx1(inertia=np.diag([3e-3, 5e-3, 2e-5]), residual_magnetic_moment=np.array([0, 0, 1.0]),
+                                  hyst_rods=[rod1])
 
 # create atmospheric density model
 air_density = AirDensityModel()
@@ -53,6 +57,7 @@ mag_field = np.zeros((len(time), 3))
 mag_field_body = np.zeros((len(time), 3))
 solar_power = np.zeros(len(time))
 is_eclipse = np.zeros(len(time))
+hyst_rod = np.zeros((len(time), 3))
 
 # declare all orbit stuff
 line1 = '1 44031U 98067PX  19083.14584174  .00005852  00000-0  94382-4 0  9997'
@@ -88,6 +93,11 @@ vel_vec_animate = DrawingVectors(np.zeros(3), 'single', color='g', label='veloci
 fig = plt.figure(figsize=(15, 5))
 ground_track_animate = AdditionalPlots(np.array(lons[0]), np.array(lats[0]), groundtrack=True)
 
+# get initial b field so that hysteresis rods can be initialized properly
+mag_field[0] = geomag.GeoMag(np.array([lats[0], lons[0], alts[0]]), time_track, output_format='inertial')
+mag_field_body[0] = (dcm_bn[0] @ mag_field[0]) * 10 ** -9  # in the body frame in units of T
+cubesat.hyst_rods[0].h[0] = mag_field_body[0][0]/cubesat.hyst_rods[0].u0
+
 # the integration
 for i in range(len(time) - 1):
     print(i)
@@ -119,10 +129,11 @@ for i in range(len(time) - 1):
 
     # get disturbance torque
     #aerod[i] = dt.aerodynamic_torque(vel_body, density[i], cubesat)
-    if not is_eclipse[i]:
-        solard[i] = dt.solar_pressure(sun_vec_body[i], sun_obj.to(u.meter).value, positions[i], cubesat)
-    gravityd[i] = dt.gravity_gradient(ue, R0, cubesat)
+    # if not is_eclipse[i]:
+    #     solard[i] = dt.solar_pressure(sun_vec_body[i], sun_obj.to(u.meter).value, positions[i], cubesat)
+    #gravityd[i] = dt.gravity_gradient(ue, R0, cubesat)
     #magneticd[i] = dt.residual_magnetic(mag_field_body[i], cubesat)
+    hyst_rod[i] = dt.hysteresis_rod_torque(mag_field_body[i], i, cubesat)
     controls[i] = aerod[i] + solard[i] + gravityd[i] + magneticd[i]
 
     # propagate orbit
@@ -173,6 +184,7 @@ if __name__ == "__main__":
         plt.xlabel('Time (s)')
         plt.ylabel(ylabel)
 
+    _plot(hyst_rod)
 
     # _plot(omegas, 'angular velocity components', 'angular velocity (rad/s)')
     # _plot(sigmas, 'mrp components', 'mrp component values')
@@ -180,6 +192,10 @@ if __name__ == "__main__":
     # _plot(controls, 'control torque components', 'Torque (Nm)')
     # plot the mrp magnitude
     # _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
+
+    cubesat.hyst_rods[0].plot_limiting_cycle(-150, 150)
+    plt.plot(cubesat.hyst_rods[0].h, cubesat.hyst_rods[0].b, color='red', linestyle='--')
+    plt.show()
 
     #_plot(aerod, 'aerodynamic disturbance')
     #_plot(gravityd, 'gravity gradient disturbance')
@@ -198,8 +214,8 @@ if __name__ == "__main__":
     plot1 = AdditionalPlots(time[::num], controls[::num], labels=['X', 'Y', 'Z'])
     plot2 = AdditionalPlots(lons[::num], lats[::num], groundtrack=True)
     plot3 = AdditionalPlots(time[::num], is_eclipse[::num])
-    #a = AnimateAttitude(dcm_bo[::num], draw_vector=ref2, additional_plots=plot2, cubesat_model=cubesat)
-    a = AnimateAttitude(dcm_bn[::num], draw_vector=[ref1, vec1, vec3, vec4], additional_plots=[plot2, plot3],
+    # a = AnimateAttitude(dcm_bo[::num], draw_vector=ref2, additional_plots=plot2, cubesat_model=cubesat)
+    a = AnimateAttitude(dcm_bn[::num], draw_vector=[ref1, vec1, vec3, vec4], additional_plots=plot2,
                         cubesat_model=cubesat)
     a.animate_and_plot()
 

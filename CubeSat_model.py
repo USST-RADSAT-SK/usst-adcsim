@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from typing import Union, List
+from hysteresis_rod import HysteresisRod
 
 
 class Face2D:
@@ -348,11 +349,15 @@ class Polygons3D:
 
 class CubeSat(Polygons3D):
     def __init__(self, faces: List[Face3D], center_of_mass: np.ndarray, inertia: np.ndarray,
-                 residual_magnetic_moment: np.ndarray):
+                 residual_magnetic_moment: np.ndarray = np.zeros(3), magnetic_moment: np.ndarray = np.zeros(3),
+                 hyst_rods: List[HysteresisRod] = []):
         self._com = center_of_mass
         self._inertia = inertia
         self._inertia_inv = np.linalg.inv(inertia)
         self._residual_magnetic_moment = residual_magnetic_moment
+        self._magnetic_moment = magnetic_moment
+        self._total_magnetic_moment = residual_magnetic_moment + magnetic_moment
+        self._hyst_rods = hyst_rods
         super().__init__(faces)
 
     @property
@@ -368,8 +373,20 @@ class CubeSat(Polygons3D):
         return self._inertia_inv
 
     @property
+    def hyst_rods(self):
+        return self._hyst_rods
+
+    @property
     def residual_magnetic_moment(self):
         return self._residual_magnetic_moment
+
+    @property
+    def magnetic_moment(self):
+        return self._magnetic_moment
+
+    @property
+    def total_magnetic_moment(self):
+        return self._total_magnetic_moment
 
 
 if __name__ == '__main__':

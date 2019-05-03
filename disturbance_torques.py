@@ -6,6 +6,7 @@ a_solar_constant = (3.823 * 10**26) / (3 * (10 ** 8)) / 4 / np.pi
 a_solar_constant_2 = (3.823 * 10**26) / 4 / np.pi
 a_gravity_gradient_constant = 3 * 3.986004418 * (10**14)
 a_earth_rotational_constant = 0.000072921158553
+u0 = 4 * np.pi * 10**-7
 
 # Note: it appears that ut.cross_product_operator is a significant amount faster than using np.cross()
 
@@ -98,5 +99,29 @@ def solar_panel_power(sun_vec, sun_vec_inertial, satellite_vec_inertial, cubesat
     return power
 
 
-def residual_magnetic(b, cubesat: CubeSat):
-    return ut.cross_product_operator(cubesat.residual_magnetic_moment) @ b  # both vectors must be in the body frame
+def total_magnetic(b, cubesat: CubeSat):
+    return ut.cross_product_operator(cubesat.total_magnetic_moment) @ b  # both vectors must be in the body frame
+
+
+def hysteresis_rod_torque(b, i, cubesat: CubeSat):
+    h = b/u0
+    torque = 0
+
+    # for each hysteresis rod
+    for rod in cubesat.hyst_rods:
+
+        # propagate the magnetic field of the rod
+        h_proj = h @ rod.axes_alignment  # calculate component of h along axis of hysteresis rod
+        rod.propagate_and_save_magnetization(h_proj, i)
+
+        # calculate m from b of the rod
+        m = rod.axes_alignment * rod.b_current * rod.scale_factor * rod.volume / u0
+
+        # calculate m x B torque
+        torque += ut.cross_product_operator(m) @ b
+
+        # calculate energy losses and torque that comes from that
+
+    # return the sum of these torques
+    return torque
+
