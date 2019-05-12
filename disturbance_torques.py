@@ -115,13 +115,9 @@ def hysteresis_rod_torque(b, i, cubesat: CubeSat):
         rod.propagate_and_save_magnetization(h_proj, i)
 
         # calculate m from b of the rod
-        m = rod.axes_alignment * rod.b_current * rod.scale_factor * rod.volume / u0
+        m = rod.axes_alignment * rod.b[i] * rod.scale_factor * rod.volume / u0
 
         # calculate m x B torque
         torque += ut.cross_product_operator(m) @ b
 
-        # calculate energy losses and torque that comes from that
-
-    # return the sum of these torques
     return torque
-

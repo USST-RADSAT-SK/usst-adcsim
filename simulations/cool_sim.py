@@ -10,7 +10,7 @@ import integral_considerations as ic
 # limitation
 inertia = np.diag([2*(10**-3), 5*(10**-3), 8*(10**-3)])
 inertia_inv = np.linalg.inv(inertia)
-omega0 = np.array([0, 5, 0])
+omega0 = np.array([2, 3, 1])
 sigma0 = np.array([0.60, -0.4, 0.2])
 
 # The integration
@@ -73,10 +73,11 @@ if __name__ == "__main__":
     # _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
 
     from animation import AnimateAttitude, DrawingVectors, AdditionalPlots
+    from CubeSat_model_examples import CubeSatSolarPressureEx1
     num = 20
     body = DrawingVectors(dcm[::num], 'axes', ['C0', 'C1', 'C2'], ['Body x', 'Body y', 'Body z'], 4)
     plot1 = AdditionalPlots(time[::num], omegas[::num], title='Angular Velocity', ylabel='Rad/s')
-    a = AnimateAttitude(dcm[::num], draw_vector=body, additional_plots=plot1)
+    a = AnimateAttitude(dcm[::num], draw_vector=body, additional_plots=plot1, cubesat_model=CubeSatSolarPressureEx1())
     a.animate_and_plot()
 
     plt.show()
