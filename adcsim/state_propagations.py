@@ -1,5 +1,5 @@
 import numpy as np
-import util as ut
+from adcsim import util as ut
 
 
 def state_dot(state, control, inertia, inertia_inv):

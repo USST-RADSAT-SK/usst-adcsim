@@ -1,16 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import transformations as tr
 import control_laws as cl
-import state_propagations as st
-import integrators as it
-import integral_considerations as ic
-import util as ut
-
+from adcsim import integrators as it, transformations as tr, util as ut, state_propagations as st, \
+    integral_considerations as ic
 
 # declare the bodies inertia, initial attitude, initial angular velocity, control torque constants, and max torque
 # limitation
-inertia = np.diag([2*(10**-3), 8*(10**-3), 8*(10**-3)])
+inertia = np.diag([2*(10**-3), 8*(10**-3), 6*(10**-3)])
 inertia_inv = np.linalg.inv(inertia)
 omega0 = np.array([0.1, 0.1, 0.1])
 sigma0 = np.array([0.20, -0.4, 0.2])
@@ -32,18 +28,13 @@ m = np.zeros((len(time), 3))
 
 
 # create magnetic field vector
-mag_vec_def = np.load('C:/Users/curtislaptop/PycharmProjects/U-of-Colorado_course/magfields.npy')[:400]
-xp = np.arange(0, end_time, 10)
-mag_vec_magnitude = 50 * (10**-6)
+mag_vec_def = np.array([1, 2, 2])
+mag_vec_def = mag_vec_def/np.linalg.norm(mag_vec_def) * 50 * (10**-6)
 
-
-mag_vec = np.zeros((len(time), 3))
 for i in range(len(time) - 1):
     # get magnetometer measurement
     # mag_vec[i+1] = dcm_mag_vec @ mag_vec[i]
-    mag_vec[i] = [np.interp(i*0.1, xp, mag_vec_def[:, 0]), np.interp(i*0.1, xp, mag_vec_def[:, 1]), np.interp(i*0.1, xp, mag_vec_def[:, 2])]
-    mag_vec[i] = mag_vec_magnitude*mag_vec[i]/np.linalg.norm(mag_vec[i])
-    mag[i] = dcm[i] @ mag_vec[i]
+    mag[i] = dcm[i] @ mag_vec_def
 
     # get control torques
     m[i] = cl.b_dot(mag[i], mag[i-1], K, i, m[i-1], time_step*1)
@@ -74,9 +65,9 @@ if __name__ == "__main__":
     # _plot(controls, 'control torque components', 'Torque (Nm)')
     # _plot(m, 'coil magnetic moments', '(A*m^2)')
 
-    from animation import AnimateAttitude, DrawingVectors, AdditionalPlots
+    from adcsim.animation import AnimateAttitude, DrawingVectors, AdditionalPlots
     num = 200
-    vec = DrawingVectors(mag_vec[::num], 'double', 'r', 'B-field', 6)
+    vec = DrawingVectors(mag_vec_def, 'double', 'r', 'B-field', 6)
     body = DrawingVectors(dcm[::num], 'axes', ['C0', 'C1', 'C2'], ['Body x', 'Body y', 'Body z'], 4)
     plot1 = AdditionalPlots(time[::num], m[::num], title='Magnetic moment', ylabel='A*m^2')
     plot2 = AdditionalPlots(time[::num], mag[::num], title='body frame B-field', ylabel='T')

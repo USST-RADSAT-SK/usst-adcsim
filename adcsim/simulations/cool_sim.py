@@ -1,10 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import transformations as tr
-import state_propagations as st
-import integrators as it
-import integral_considerations as ic
-
+from adcsim import integrators as it, transformations as tr, state_propagations as st, integral_considerations as ic
 
 # declare the bodies inertia, initial attitude, initial angular velocity, control torque constants, and max torque
 # limitation
@@ -72,8 +68,8 @@ if __name__ == "__main__":
     # plot the mrp magnitude
     # _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
 
-    from animation import AnimateAttitude, DrawingVectors, AdditionalPlots
-    from CubeSat_model_examples import CubeSatSolarPressureEx1
+    from adcsim.animation import AnimateAttitude, DrawingVectors, AdditionalPlots
+    from adcsim.CubeSat_model_examples import CubeSatSolarPressureEx1
     num = 20
     body = DrawingVectors(dcm[::num], 'axes', ['C0', 'C1', 'C2'], ['Body x', 'Body y', 'Body z'], 4)
     plot1 = AdditionalPlots(time[::num], omegas[::num], title='Angular Velocity', ylabel='Rad/s')

@@ -1,5 +1,5 @@
 import numpy as np
-from CubeSat_model import CubeSat, Face2D, Face3D, Polygons3D
+from adcsim.CubeSat_model import CubeSat, Face2D, Face3D, Polygons3D
 
 
 class CubeSatEx1(CubeSat):

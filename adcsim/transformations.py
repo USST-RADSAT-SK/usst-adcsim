@@ -9,7 +9,7 @@ MRP = Modified Rodriques Parameters     (The "cool" new attitude coordinates)
 
 """
 import numpy as np
-import util as ut
+from adcsim import util as ut
 
 
 def prv_to_dcm(angle, unit_vector):

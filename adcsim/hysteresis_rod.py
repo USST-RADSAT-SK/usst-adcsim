@@ -1,5 +1,5 @@
 import numpy as np
-from integrators import rk4_general
+from adcsim.integrators import rk4_general
 
 
 class HysteresisRod:

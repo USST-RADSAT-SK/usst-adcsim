@@ -1,5 +1,5 @@
 import numpy as np
-import transformations as tr
+from adcsim import transformations as tr
 
 
 def random_dcm():

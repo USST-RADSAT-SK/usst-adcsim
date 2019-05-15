@@ -1,12 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import transformations as tr
 import control_laws as cl
-import state_propagations as st
-import integrators as it
-import integral_considerations as ic
-import find_reference_frame as rf
-
+from adcsim import integrators as it, find_reference_frame as rf, transformations as tr, state_propagations as st, \
+    integral_considerations as ic
 
 time_step = 0.01
 end_time = 500
@@ -115,7 +111,7 @@ if __name__ == "__main__":
     # plot the mrp magnitude
     # _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
 
-    from animation import AnimateAttitude, DrawingVectors
+    from adcsim.animation import AnimateAttitude, DrawingVectors
     num = 200
     ref1 = DrawingVectors(dcm_bn[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=4)
     ref2 = DrawingVectors(dcm_rn[::num], 'axes', color=['r', 'y', 'b'], label=['Ref x', 'Ref y', 'Ref z'], length=4)

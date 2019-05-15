@@ -1,25 +1,22 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import transformations as tr
-import state_propagations as st
-import integrators as it
-import integral_considerations as ic
-import disturbance_torques as dt
-import util as ut
+from adcsim import disturbance_torques as dt, integrators as it, transformations as tr, util as ut, \
+    state_propagations as st, integral_considerations as ic
 from skyfield.api import load, EarthSatellite, utc
 from astropy.coordinates import get_sun
 from astropy.time import Time
 import astropy.units as u
-from CubeSat_model_examples import CubeSatSolarPressureEx1, CubeSatAerodynamicEx1
-from hysteresis_rod import HysteresisRod
+from adcsim.CubeSat_model_examples import CubeSatSolarPressureEx1
+from adcsim.hysteresis_rod import HysteresisRod
 from datetime import datetime, timedelta
-from atmospheric_density import AirDensityModel
-from magnetic_field_model import GeoMag
-from animation import AnimateAttitudeInside, DrawingVectors, AdditionalPlots
+from adcsim.atmospheric_density import AirDensityModel
+from adcsim.magnetic_field_model import GeoMag
+from adcsim.animation import AnimateAttitudeInside, DrawingVectors, AdditionalPlots
+from tqdm import tqdm
 
 # declare time step for integration
 time_step = 0.1
-end_time = 3000
+end_time = 300
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
@@ -101,9 +98,7 @@ mag_field_body[0] = (dcm_bn[0] @ mag_field[0]) * 10 ** -9  # in the body frame i
 cubesat.hyst_rods[0].h[0] = mag_field_body[0][0]/cubesat.hyst_rods[0].u0
 
 # the integration
-for i in range(len(time) - 1):
-    print(i)
-
+for i in tqdm(range(len(time) - 1)):
     # get magnetic field in inertial frame (for show right now)
     mag_field[i] = geomag.GeoMag(np.array([lats[i], lons[i], alts[i]]), time_track, output_format='inertial')
     mag_field_body[i] = (dcm_bn[i] @ mag_field[i]) * 10**-9  # in the body frame in units of T
@@ -165,14 +160,14 @@ for i in range(len(time) - 1):
         solar_power[i] = dt.solar_panel_power(sun_vec_body[i], sun_obj.to(u.meter).value, positions[i], cubesat)
 
     # animate
-    if i % 10 == 0:
-        nadir_vec.data = nadir[i]
-        vel_vec_animate.data = velocities[i]
-        ground_track_animate.xdata = np.append(ground_track_animate.xdata, lons[i])
-        ground_track_animate.ydata = np.append(ground_track_animate.ydata, lats[i])
-        plts.animate_and_plot(fig, dcm_bn[i], draw_vector=[nadir_vec, vel_vec_animate],
-                              additional_plots=[ground_track_animate])
-
+    # if i % 10 == 0:
+    #     nadir_vec.data = nadir[i]
+    #     vel_vec_animate.data = velocities[i]
+    #     ground_track_animate.xdata = np.append(ground_track_animate.xdata, lons[i])
+    #     ground_track_animate.ydata = np.append(ground_track_animate.ydata, lats[i])
+    #     plts.animate_and_plot(fig, dcm_bn[i], draw_vector=[nadir_vec, vel_vec_animate],
+    #                           additional_plots=[ground_track_animate])
+    #
 
 if __name__ == "__main__":
     # omegas = states[:, 1]
@@ -210,8 +205,8 @@ if __name__ == "__main__":
     #_plot(solard, 'solar radiation pressure disturbance')
     #_plot(magneticd, 'residual magnetic disturbance')
 
-    from animation import AnimateAttitude, DrawingVectors, AdditionalPlots
-    num = 300
+    from adcsim.animation import AnimateAttitude, DrawingVectors, AdditionalPlots
+    num = 10
     vec1 = DrawingVectors(nadir[::num], 'single', color='b', label='nadir', length=0.5)
     vec2 = DrawingVectors(sun_vec[::num], 'single', color='y', label='sun', length=0.5)
     vec3 = DrawingVectors(velocities[::num], 'single', color='g', label='velocity', length=0.5)

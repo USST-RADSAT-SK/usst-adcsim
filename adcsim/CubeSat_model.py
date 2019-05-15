@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from typing import Union, List
-from hysteresis_rod import HysteresisRod
+from adcsim.hysteresis_rod import HysteresisRod
 
 
 class Face2D:
@@ -390,7 +390,7 @@ class CubeSat(Polygons3D):
 
 
 if __name__ == '__main__':
-    from CubeSat_model_examples import CubeSatEx1
+    from adcsim.CubeSat_model_examples import CubeSatEx1
 
     cubesat = CubeSatEx1()
     cubesat.plot()

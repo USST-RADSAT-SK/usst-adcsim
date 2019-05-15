@@ -1,19 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import transformations as tr
-import state_propagations as st
-import integrators as it
-import integral_considerations as ic
-import find_reference_frame as rf
-import util as ut
-
-time_step = 0.02
-end_time = 600
-time = np.arange(0, end_time, time_step)
+import control_laws as cl
+from adcsim import integrators as it, find_reference_frame as rf, transformations as tr, state_propagations as st, \
+    integral_considerations as ic
+import attitude_estimations as ae
 
 
 # declare the bodies inertia, initial attitude, initial angular velocity, control torque constants, and max torque
 # limitation
+
+
 inertia = np.diag([2*(10**-3), 8*(10**-3), 8*(10**-3)])
 inertia_inv = np.linalg.inv(inertia)
 # original
@@ -22,13 +18,21 @@ inertia_inv = np.linalg.inv(inertia)
 # new
 omega0 = np.array([0, 0, 0])
 sigma0 = np.array([0.60, -0.4, 0.2])
-K = 10000000
+K = .81 * (10**-5)
+P = np.array([15.67, 16.67, 20.67])*(10**-5)
 max_torque = None
 
 
 # create reference frame
 v = np.array([-0.7, 0.2, -0.1])  # create a vector that represents euler angle rotation
 dcm_rn = tr.euler_angles_to_dcm(v, type='3-2-1')  # find dcm corresponding to euler angle rotation
+
+
+# create inertial sun and magnetic field vectors for attitude determination
+sun_vec = np.random.random(3)
+sun_vec = sun_vec/np.linalg.norm(sun_vec)
+mag_vec = np.random.random(3)
+mag_vec = mag_vec/np.linalg.norm(mag_vec)
 
 
 # declare reaction wheel inertia
@@ -42,51 +46,37 @@ inertia_rw[1, 1] += reaction_wheel_inertia[1]
 inertia_rw[2, 2] += reaction_wheel_inertia[2]
 inertia_inv_rw = np.linalg.inv(inertia_rw)
 
-# create magnetic field vector
-mag_vec_def = np.array([1, 2, 2])
-mag_vec_def = mag_vec_def/np.linalg.norm(mag_vec_def) * 50 * (10**-6)
-
-# mag_vec_def = np.load('magfields.npy')[:400]
-# xp = np.linspace(0, end_time, len(mag_vec_def))
-# mag_vec_magnitude = 50 * (10**-6)
-
 
 # The integration
+time_step = 0.02
+end_time = 600
+time = np.arange(0, end_time, time_step)
 states = np.zeros((len(time), 2, 3))
-real_controls = np.zeros((len(time), 3))
+controls = np.zeros((len(time), 3))
 states[0] = [sigma0, omega0]
 wheel_angular_vel = np.zeros((len(time), 3))  # initial condition for wheels
-wheel_angular_vel[0] = [10, 10, 10]
 wheel_angular_accel = np.zeros((len(time), 3))  # initial condition for wheels
 dcm = np.zeros((len(time), 3, 3))
 dcm[0] = tr.mrp_to_dcm(states[0][0])
-mag = np.zeros((len(time), 3))
-m = np.zeros((len(time), 3))
 for i in range(len(time) - 1):
-    # mag_vec = np.array([np.interp(i*0.1, xp, mag_vec_def[:, 0]), np.interp(i*0.1, xp, mag_vec_def[:, 1]), np.interp(i*0.1, xp, mag_vec_def[:, 2])])
-    # mag_vec = mag_vec_magnitude*mag_vec/np.linalg.norm(mag_vec)
-    # mag[i] = dcm[i] @ mag_vec
-    mag[i] = dcm[i] @ mag_vec_def
+    # do attitude determination
+    sigma_estimated = ae.mrp_triad_with_noise(states[i][0], sun_vec, mag_vec, 0.01, 0.01)
 
     # get reference frame
-    sigma_br = rf.get_mrp_br(dcm_rn, states[i][0])  # note: angular velocities need to be added to reference frame
+    sigma_br = rf.get_mrp_br(dcm_rn, sigma_estimated)  # note: angular velocities need to be added to reference frame
 
     # get the hs variable needed for control torque calculation and state propagation
-    hs = reaction_wheel_inertia[0] * (wheel_angular_vel[i])
+    hs = reaction_wheel_inertia[0] * (states[i][1] + wheel_angular_vel[i])
 
-    # get magnetic moment and wheel angular acceleration that create approx zero control torque
-    m[i] = -K*(ut.cross_product_operator(mag[i]) @ hs)
-    omega_dot = (states[i+1][1, 0] - states[i][1, 0])/time_step
-    wheel_angular_accel[i] = (ut.cross_product_operator(m[i]) @ mag[i])/reaction_wheel_inertia[0] - omega_dot
-
-    # get real controls corresponding to this
-    real_controls[i] = ut.cross_product_operator(m[i]) @ mag[i] + reaction_wheel_inertia[0]*(wheel_angular_accel[i] + omega_dot)
+    # get control torques
+    controls[i] = cl.reaction_wheel_control(sigma_br, states[i][1], inertia_rw, K, P, i, controls[i-1], hs, max_torque=max_torque)
 
     # propagate attitude state
-    states[i+1] = it.rk4(st.state_dot, time_step, states[i], real_controls[i], inertia, inertia_inv)
+    states[i+1] = it.rk4(st.state_dot_reaction_wheels, time_step, states[i], controls[i], inertia_rw, inertia_inv_rw, hs)
 
-    # get wheel angular velocity
-    wheel_angular_vel[i+1] = wheel_angular_vel[i] + wheel_angular_accel[i] * time_step
+    # get wheel angular velocity and acceleration
+    wheel_angular_accel[i+1] = -controls[i]/reaction_wheel_inertia[0] - (states[i+1][1, 0] - states[i][1, 0])/time_step
+    wheel_angular_vel[i+1] = wheel_angular_vel[i] + wheel_angular_accel[i+1] * time_step
 
     # do 'tidy' up things at the end of integration (needed for many types of attitude coordinates)
     states[i+1] = ic.mrp_switching(states[i+1])
@@ -125,7 +115,7 @@ if __name__ == "__main__":
     _plot(angle, 'prv angle reference', 'prv angle (rad)')
 
     # plot the control torque
-    _plot(real_controls, 'control torque components', 'Torque (Nm)')
+    _plot(controls, 'control torque components', 'Torque (Nm)')
 
     # plot the mrp magnitude
     _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
@@ -133,15 +123,14 @@ if __name__ == "__main__":
     # plot wheel speed and accelerations
     _plot(wheel_angular_vel*9.5493, 'reaction wheel angular velocities', 'rpm')
     _plot(wheel_angular_accel, 'reaction wheel angular accelerations', 'rad/s/s')
-    _plot(m, 'coil magnetic moments', '(A*m^2)')
 
-    from animation import AnimateAttitude, DrawingVectors, AdditionalPlots
+    from adcsim.animation import AnimateAttitude, DrawingVectors, AdditionalPlots
     num = 200
     plot1 = AdditionalPlots(time[::num], wheel_angular_vel[::num]*9.5493, title='Reaction Wheel Angular Velocities',
                             ylabel='rpm')
-    plot2 = AdditionalPlots(time[::num], m[::num], title='Magnetic moment', ylabel='A*m^2')
     ref1 = DrawingVectors(dcm[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=4)
-    a = AnimateAttitude(dcm[::num], draw_vector=ref1, additional_plots=[plot1, plot2])
+    ref2 = DrawingVectors(dcm_rn, 'axes', color=['r', 'y', 'b'], label=['Ref x', 'Ref y', 'Ref z'], length=4)
+    a = AnimateAttitude(dcm[::num], draw_vector=[ref1, ref2], additional_plots=plot1)
     a.animate_and_plot()
 
     plt.show()

@@ -1,6 +1,5 @@
-import util as ut
 import numpy as np
-import transformations as tr
+from adcsim import transformations as tr, util as ut
 
 
 def triad(v1n, v2n, v1b, v2b):

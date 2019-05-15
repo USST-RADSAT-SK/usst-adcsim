@@ -26,7 +26,7 @@ import numpy as np
 import math
 import os
 import datetime
-import icrf_to_fixed
+from adcsim import icrf_to_fixed
 
 
 class GeoMag:

@@ -3,7 +3,7 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 from typing import List, Union
-from CubeSat_model import CubeSat
+from adcsim.CubeSat_model import CubeSat
 
 
 class DrawingVectors:

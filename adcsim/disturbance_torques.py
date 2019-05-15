@@ -1,6 +1,6 @@
-import util as ut
+from adcsim import util as ut
 import numpy as np
-from CubeSat_model import CubeSat
+from adcsim.CubeSat_model import CubeSat
 
 a_solar_constant = (3.823 * 10**26) / (3 * (10 ** 8)) / 4 / np.pi
 a_solar_constant_2 = (3.823 * 10**26) / 4 / np.pi

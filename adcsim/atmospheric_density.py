@@ -1,12 +1,11 @@
 import xarray as xr
-import sys
 import os
 import numpy as np
 import datetime as dt
-from space_weather import create_space_weather_netcdf
+from adcsim.space_weather import create_space_weather_netcdf
 
-from Python_NRLMSISE.nrlmsise_00 import *
-from Python_NRLMSISE.nrlmsise_00_header import *
+from adcsim.Python_NRLMSISE.nrlmsise_00 import *
+from adcsim.Python_NRLMSISE.nrlmsise_00_header import *
 
 
 class AirDensityModel:

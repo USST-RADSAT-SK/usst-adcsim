@@ -1,5 +1,5 @@
 import numpy as np
-import util as ut
+from adcsim import util as ut
 
 
 # control torque equations taken from Part3/3_Control.Mod.3.Slides.pdf page 27.

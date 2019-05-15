@@ -1,8 +1,7 @@
 import unittest
-import transformations as tr
-import util as ut
+from adcsim import transformations as tr, util as ut
 import numpy as np
-from CubeSat_model import Features, Faces
+from adcsim.CubeSat_model import Features, Faces
 
 
 class CubeSatModelTests(unittest.TestCase):
