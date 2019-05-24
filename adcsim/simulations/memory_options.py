@@ -16,11 +16,11 @@ from tqdm import tqdm
 import xarray as xr
 from scipy.interpolate.interpolate import interp1d
 
-save_every = 1
+save_every = 100
 
 # declare time step for integration
-time_step = 0.1
-end_time = 300
+time_step = 0.01
+end_time = 1200000
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
