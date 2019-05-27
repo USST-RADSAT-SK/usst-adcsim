@@ -137,7 +137,6 @@ for i in tqdm(range(len(time) - 1)):
     states[i+1] = ic.mrp_switching(states[i+1])
 
 
-
 if __name__ == "__main__":
     # omegas = states[:, 1]
     # sigmas = states[:, 0]
