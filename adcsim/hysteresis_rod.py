@@ -62,11 +62,11 @@ class HysteresisRod:
         self.h[i+1] = h
         step = self.h[i+1] - self.h[i]
         if self.h[i+1] >= self.h[i]:
-            # self.b[i+1] = rk4_general(self.mag_process_positive_h, step, self.h[i+1], self.b[i])
-            self.b[i+1] = self.b[i] + self.mag_process_positive_h(self.h[i+1], self.b[i]) * step
+            self.b[i+1] = rk4_general(self.mag_process_positive_h, step, self.h[i+1], self.b[i])
+            # self.b[i+1] = self.b[i] + self.mag_process_positive_h(self.h[i+1], self.b[i]) * step
         else:
-            # self.b[i+1] = rk4_general(self.mag_process_negative_h, step, self.h[i+1], self.b[i])
-            self.b[i+1] = self.b[i] + self.mag_process_negative_h(self.h[i+1], self.b[i]) * step
+            self.b[i+1] = rk4_general(self.mag_process_negative_h, step, self.h[i+1], self.b[i])
+            # self.b[i+1] = self.b[i] + self.mag_process_negative_h(self.h[i+1], self.b[i]) * step
         self.h_current = h
         self.b_current = self.b[i+1]
 

@@ -17,13 +17,13 @@ import xarray as xr
 
 # declare time step for integration
 time_step = 0.1
-end_time = 300
+end_time = 30000
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
-rod1 = HysteresisRod(0.4, 2.5, 12, volume=0.09*np.pi*(0.0005)**2, mass=0.001, integration_size=len(time),
+rod1 = HysteresisRod(0.4, 2.5, 12, volume=0.09*np.pi*(0.0005)**2, mass=0.001,
                      scale_factor=10**-2, axes_alignment=np.array([1.0, 0, 0]))
-rod2 = HysteresisRod(0.4, 2.5, 12, volume=0.09*np.pi*(0.0005)**2, mass=0.001, integration_size=len(time),
+rod2 = HysteresisRod(0.4, 2.5, 12, volume=0.09*np.pi*(0.0005)**2, mass=0.001,
                      scale_factor=10**-2, axes_alignment=np.array([0, 1.0, 0]))
 cubesat = CubeSatSolarPressureEx1(inertia=np.diag([3e-2, 5e-2, 8e-3]), magnetic_moment=np.array([0, 0, 1.0]),
                                   hyst_rods=[rod1, rod2])
@@ -87,7 +87,7 @@ dcm_bo[0] = dcm_bn[0] @ dcm_on[0].T
 # get initial b field so that hysteresis rods can be initialized properly
 mag_field[0] = geomag.GeoMag(np.array([lats[0], lons[0], alts[0]]), time_tracks[0], output_format='inertial')
 mag_field_body[0] = (dcm_bn[0] @ mag_field[0]) * 10 ** -9  # in the body frame in units of T
-cubesat.hyst_rods[0].h[0] = mag_field_body[0][0]/cubesat.hyst_rods[0].u0
+# cubesat.hyst_rods[0].h_current = mag_field_body[0][0]/cubesat.hyst_rods[0].u0
 
 # the integration
 for i in tqdm(range(len(time) - 1)):
@@ -123,7 +123,7 @@ for i in tqdm(range(len(time) - 1)):
         solard[i] = dt.solar_pressure(sun_vec_body[i], sun_vec[i], positions[i], cubesat)
     gravityd[i] = dt.gravity_gradient(ue, R0, cubesat)
     magneticd[i] = dt.total_magnetic(mag_field_body[i], cubesat)
-    hyst_rod[i] = dt.hysteresis_rod_torque(mag_field_body[i], i, cubesat)
+    hyst_rod[i] = dt.hysteresis_rod_torque(mag_field_body[i], cubesat)
     controls[i] = aerod[i] + solard[i] + gravityd[i] + magneticd[i] + hyst_rod[i]
 
     # calculate solar power

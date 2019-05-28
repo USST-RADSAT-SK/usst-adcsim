@@ -147,7 +147,7 @@ for i in tqdm(range(len(time) - 1)):
         solard[i] = dt.solar_pressure(sun_vec_body[i], sun_obj.to(u.meter).value, positions[i], cubesat)
     gravityd[i] = dt.gravity_gradient(ue, R0, cubesat)
     magneticd[i] = dt.total_magnetic(mag_field_body[i], cubesat)
-    hyst_rod[i] = dt.hysteresis_rod_torque(mag_field_body[i], i, cubesat)
+    hyst_rod[i] = dt.hysteresis_rod_torque(mag_field_body[i], cubesat)
     controls[i] = aerod[i] + solard[i] + gravityd[i] + magneticd[i] + hyst_rod[i]
 
     # calculate solar power

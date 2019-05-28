@@ -103,7 +103,8 @@ def total_magnetic(b, cubesat: CubeSat):
     return ut.cross_product_operator(cubesat.total_magnetic_moment) @ b  # both vectors must be in the body frame
 
 
-def hysteresis_rod_torque(b, i, cubesat: CubeSat):
+# if you want to save the hysteresis data
+def hysteresis_rod_torque_save(b, i, cubesat: CubeSat):
     h = b/u0
     torque = 0
 
@@ -116,6 +117,26 @@ def hysteresis_rod_torque(b, i, cubesat: CubeSat):
 
         # calculate m from b of the rod
         m = rod.axes_alignment * rod.b[i] * rod.scale_factor * rod.volume / u0
+
+        # calculate m x B torque
+        torque += ut.cross_product_operator(m) @ b
+
+    return torque
+
+
+def hysteresis_rod_torque(b, cubesat: CubeSat):
+    h = b/u0
+    torque = 0
+
+    # for each hysteresis rod
+    for rod in cubesat.hyst_rods:
+
+        # propagate the magnetic field of the rod
+        h_proj = h @ rod.axes_alignment  # calculate component of h along axis of hysteresis rod
+        rod.propagate_magnetization(h_proj)
+
+        # calculate m from b of the rod
+        m = rod.axes_alignment * rod.b_current * rod.scale_factor * rod.volume / u0
 
         # calculate m x B torque
         torque += ut.cross_product_operator(m) @ b
