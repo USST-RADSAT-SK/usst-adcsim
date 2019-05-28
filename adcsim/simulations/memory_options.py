@@ -16,19 +16,19 @@ from tqdm import tqdm
 import xarray as xr
 from scipy.interpolate.interpolate import interp1d
 
-save_every = 1
+save_every = 100
 
 # declare time step for integration
-time_step = 0.1
-end_time = 300
+time_step = 0.01
+end_time = 1500000
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
-rod1 = HysteresisRod(0.4, 2.5, 12, volume=0.09*np.pi*(0.0005)**2, mass=0.001, integration_size=len(time),
+rod1 = HysteresisRod(0.4, 2.5, 12, volume=0.15*np.pi*(0.0005)**2, mass=0.001,
                      scale_factor=10**-2, axes_alignment=np.array([1.0, 0, 0]))
-rod2 = HysteresisRod(0.4, 2.5, 12, volume=0.09*np.pi*(0.0005)**2, mass=0.001, integration_size=len(time),
+rod2 = HysteresisRod(0.4, 2.5, 12, volume=0.15*np.pi*(0.0005)**2, mass=0.001,
                      scale_factor=10**-2, axes_alignment=np.array([0, 1.0, 0]))
-cubesat = CubeSatSolarPressureEx1(inertia=np.diag([3e-2, 5e-2, 8e-3]), magnetic_moment=np.array([0, 0, 1.0]),
+cubesat = CubeSatSolarPressureEx1(inertia=np.diag([5e-2, 5e-2, 8e-3]), magnetic_moment=np.array([0, 0, 1.0]),
                                   hyst_rods=[rod1, rod2])
 
 # create atmospheric density model
@@ -64,7 +64,7 @@ is_eclipse = np.zeros(le)
 hyst_rod = np.zeros((le, 3))
 
 # load saved data
-save_data = xr.open_dataset('saved_data.nc')
+save_data = xr.open_dataset(r'C:\Users\cmp310\PycharmProjects\U-of-Colorado_course\saved_data.nc')
 time_track = datetime(2019, 3, 24, 18, 35, 1, tzinfo=utc)
 final_time = time_track + timedelta(seconds=time_step*len(time))
 saved_data = save_data.sel(time=slice(None, final_time))
@@ -132,10 +132,10 @@ for i in tqdm(range(len(time) - 1)):
             is_eclipse[k] = 1
 
         # get disturbance torque
-        aerod[k] = dt.aerodynamic_torque(vel_body, density[k], cubesat)
-        if not is_eclipse[k]:
-            solard[k] = dt.solar_pressure(sun_vec_body[k], sun_vec[k], positions[k], cubesat)
-        gravityd[k] = dt.gravity_gradient(ue, R0, cubesat)
+        # aerod[k] = dt.aerodynamic_torque(vel_body, density[k], cubesat)
+        # if not is_eclipse[k]:
+        #     solard[k] = dt.solar_pressure(sun_vec_body[k], sun_vec[k], positions[k], cubesat)
+        # gravityd[k] = dt.gravity_gradient(ue, R0, cubesat)
         magneticd[k] = dt.total_magnetic(mag_field_body[k], cubesat)
         hyst_rod[k] = dt.hysteresis_rod_torque(mag_field_body[k], i, cubesat)
         controls[k] = aerod[k] + solard[k] + gravityd[k] + magneticd[k] + hyst_rod[k]
@@ -183,15 +183,15 @@ for i in tqdm(range(len(time) - 1)):
             is_eclipsei = 0
 
         # get disturbance torque
-        aerodi = dt.aerodynamic_torque(vel_body, densityi, cubesat)
-        if not is_eclipsei:
-            solardi = dt.solar_pressure(sun_vec_bodyi, sun_veci, positionsi, cubesat)
-        else:
-            solardi = np.zeros(3)
-        gravitydi = dt.gravity_gradient(ue, R0, cubesat)
+        # aerodi = dt.aerodynamic_torque(vel_body, densityi, cubesat)
+        # if not is_eclipsei:
+        #     solardi = dt.solar_pressure(sun_vec_bodyi, sun_veci, positionsi, cubesat)
+        # else:
+        #     solardi = np.zeros(3)
+        # gravitydi = dt.gravity_gradient(ue, R0, cubesat)
         magneticdi = dt.total_magnetic(mag_field_bodyi, cubesat)
         hyst_rodi = dt.hysteresis_rod_torque(mag_field_bodyi, i, cubesat)
-        controlsi = aerodi + solardi + gravitydi + magneticdi + hyst_rodi
+        controlsi = magneticdi + hyst_rodi
 
         # calculate solar power
         if not is_eclipsei:
@@ -205,56 +205,26 @@ for i in tqdm(range(len(time) - 1)):
 states = np.delete(states, 1, axis=0)
 
 if __name__ == "__main__":
-    # omegas = states[:, 1]
-    # sigmas = states[:, 0]
-    #
-    #
-    def _plot(data, title='', ylabel=''):
-        plt.figure()
-        plt.plot(time[::save_every], data)
-        plt.title(title)
-        plt.xlabel('Time (s)')
-        plt.ylabel(ylabel)
+    omegas = states[:, 1]
+    sigmas = states[:, 0]
 
-    _plot(hyst_rod)
-
-    # _plot(omegas, 'angular velocity components', 'angular velocity (rad/s)')
-    # _plot(sigmas, 'mrp components', 'mrp component values')
-    # plot the control torque
-    # _plot(controls, 'control torque components', 'Torque (Nm)')
-    # plot the mrp magnitude
-    # _plot(np.linalg.norm(sigmas, axis=1), 'mrp magnitude', '')
-
-    # Calculate angles between body axis and magnetic field
-    mag_angles = np.zeros((len(time), 3))
-    for i in range(len(time)):
-        mag_angles[i] = np.arccos(dcm_bn[i] @ mag_field[i] / np.linalg.norm(mag_field[i]))
-
-
-    cubesat.hyst_rods[0].plot_limiting_cycle(-150, 150)
-    plt.plot(cubesat.hyst_rods[0].h, cubesat.hyst_rods[0].b, color='red', linestyle='--')
-    plt.show()
-
-    #_plot(aerod, 'aerodynamic disturbance')
-    #_plot(gravityd, 'gravity gradient disturbance')
-    #_plot(solard, 'solar radiation pressure disturbance')
-    #_plot(magneticd, 'residual magnetic disturbance')
-
-    from adcsim.animation import AnimateAttitude, DrawingVectors, AdditionalPlots
-    num = 1000
-    vec1 = DrawingVectors(nadir[::num], 'single', color='b', label='nadir', length=0.5)
-    vec2 = DrawingVectors(sun_vec[::num], 'single', color='y', label='sun', length=0.5)
-    vec3 = DrawingVectors(velocities[::num], 'single', color='g', label='velocity', length=0.5)
-    vec4 = DrawingVectors(mag_field[::num], 'single', color='r', label='magnetic field', length=0.5)
-    ref1 = DrawingVectors(dcm_bn[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=0.2)
-    reforbit = DrawingVectors(dcm_on[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Orbit x', 'Orbit y', 'Orbit z'], length=0.2)
-    ref2 = DrawingVectors(dcm_bo[::num], 'axes', color=['C0', 'C1', 'C2'], label=['Body x', 'Body y', 'Body z'], length=0.2)
-    plot1 = AdditionalPlots(time[::num], controls[::num], labels=['X', 'Y', 'Z'])
-    plot2 = AdditionalPlots(lons[::num], lats[::num], groundtrack=True)
-    plot3 = AdditionalPlots(time[::num], is_eclipse[::num])
-    # a = AnimateAttitude(dcm_bo[::num], draw_vector=ref2, additional_plots=plot2, cubesat_model=cubesat)
-    a = AnimateAttitude(dcm_bn[::num], draw_vector=[ref1, vec1, vec4], additional_plots=plot2,
-                        cubesat_model=cubesat)
-    a.animate_and_plot()
-
-    plt.show()
+    # save the data
+    a = xr.Dataset({'sun': (['time', 'cord'], sun_vec),
+                    'mag': (['time', 'cord'], mag_field),
+                    'atmos': ('time', density),
+                    'lons': ('time', lons),
+                    'lats': ('time', lats),
+                    'alts': ('time', alts),
+                    'positions': (['time', 'cord'], positions),
+                    'velocities': (['time', 'cord'], velocities),
+                    'dcm_bn': (['time', 'dcm_mat_dim1', 'dcm_mat_dim2'], dcm_bn),
+                    'dcm_bo': (['time', 'dcm_mat_dim1', 'dcm_mat_dim2'], dcm_bo),
+                    'angular_vel': (['time', 'cord'], omegas),
+                    'controls': (['time', 'cord'], controls),
+                    'solar_power': ('time', solar_power)},
+                   coords={'time': np.arange(0, le, 1), 'cord': ['x', 'y', 'z']},
+                   attrs={'start_time': time_track.strftime('%Y/%m/%d %H:%M:%S'),
+                          'end_time': final_time.strftime('%Y/%m/%d %H:%M:%S'),
+                          'time_step': time_step, 'save_every': save_every, 'end_time': end_time,
+                          'Description': 'large rods and small mag'})
+    a.to_netcdf('run5.nc')
