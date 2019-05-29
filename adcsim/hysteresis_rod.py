@@ -5,17 +5,14 @@ from adcsim.integrators import rk4_general
 class HysteresisRod:
     # TODO: is the limiting cycle B on the y-axis or is it M = B - u0*H?
 
-    def __init__(self, br, bs, hc, volume=1, mass=1, axes_alignment=np.array([1, 0, 0]), h_initial=0, b_initial=0,
-                 integration_size=None, scale_factor=10**-5):
+    def __init__(self, br, bs, hc, volume=1, axes_alignment=np.array([1, 0, 0]), h_initial=0, b_initial=0,
+                 integration_size=None):
         self.u0 = 4 * np.pi * 10**-7
-        self.scale_factor = scale_factor
         self.br = br
         self.bs = bs
         self.hc = hc
         self.k = (1/hc) * np.tan(np.pi * br / 2 / bs)
         self.volume = volume
-        self.mass = mass
-        self.density = mass/volume
         self.axes_alignment = axes_alignment
         self.b_previous = b_initial
         self.h_previous = h_initial

@@ -16,19 +16,17 @@ from tqdm import tqdm
 import xarray as xr
 from scipy.interpolate.interpolate import interp1d
 
-save_every = 1000
+save_every = 10
 
 # declare time step for integration
 time_step = 0.01
-end_time = 1500000
+end_time = 10000
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
-rod1 = HysteresisRod(0.4, 2.5, 12, volume=3*0.15*np.pi*(0.0005)**2, mass=0.001,
-                     scale_factor=10**-2, axes_alignment=np.array([1.0, 0, 0]))
-rod2 = HysteresisRod(0.4, 2.5, 12, volume=3*0.15*np.pi*(0.0005)**2, mass=0.001,
-                     scale_factor=10**-2, axes_alignment=np.array([0, 1.0, 0]))
-cubesat = CubeSatSolarPressureEx1(inertia=np.diag([5e-2, 5e-2, 8e-3]), magnetic_moment=np.array([0, 0, 1.0]),
+rod1 = HysteresisRod(0.35, 0.73, 1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 0, 1.0]))
+rod2 = HysteresisRod(0.35, 0.73, 1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 1.0, 0]))
+cubesat = CubeSatSolarPressureEx1(inertia=np.diag([0.00309, 0.00417, 0.00363]), magnetic_moment=np.array([1.0, 0, 0]),
                                   hyst_rods=[rod1, rod2])
 
 # create atmospheric density model
@@ -64,7 +62,7 @@ is_eclipse = np.zeros(le)
 hyst_rod = np.zeros((le, 3))
 
 # load saved data
-save_data = xr.open_dataset(r'C:\Users\cmp310\PycharmProjects\U-of-Colorado_course\saved_data.nc')
+save_data = xr.open_dataset('saved_data.nc')
 time_track = datetime(2019, 3, 24, 18, 35, 1, tzinfo=utc)
 final_time = time_track + timedelta(seconds=time_step*len(time))
 saved_data = save_data.sel(time=slice(None, final_time))
@@ -86,17 +84,20 @@ sun_vec[0], mag_field[0], density[0], lons[0], lats[0], alts[0], positions[0], v
 dcm0 = ut.initial_align_gravity_stabilization(positions[0], velocities[0])
 sigma0 = tr.dcm_to_mrp(dcm0)
 # initialize angular velocity so that it is approximately the speed of rotation around the earth
-omega0_body = np.array([0, -0.1, 0.05])
+omega0_body = np.array([0, 5*np.pi/180, 0])
 omega0 = dcm0.T @ omega0_body
 states[0] = state = [sigma0, omega0]
 dcm_bn[0] = tr.mrp_to_dcm(states[0][0])
 dcm_on[0] = ut.inertial_to_orbit_frame(positions[0], velocities[0])
 dcm_bo[0] = dcm_bn[0] @ dcm_on[0].T
 
-# get initial b field so that hysteresis rods can be initialized properly
+# Put hysteresis rods in an initial state that is reasonable. (Otherwise you can get large magnetization from the rods)
 mag_field[0] = geomag.GeoMag(np.array([lats[0], lons[0], alts[0]]), time_track, output_format='inertial')
 mag_field_body[0] = (dcm_bn[0] @ mag_field[0]) * 10 ** -9  # in the body frame in units of T
-cubesat.hyst_rods[0].h_current = mag_field_body[0][0]/cubesat.hyst_rods[0].u0
+for rod in cubesat.hyst_rods:
+    axes = np.argwhere(rod.axes_alignment == 1)[0][0]
+    rod.h_current = mag_field_body[0][axes]/cubesat.hyst_rods[0].u0
+    rod.b_current = rod.b_field_bottom(rod.h_current)
 
 # the integration
 k = 0
@@ -141,8 +142,8 @@ for i in tqdm(range(len(time) - 1)):
         controls[k] = aerod[k] + solard[k] + gravityd[k] + magneticd[k] + hyst_rod[k]
 
         # calculate solar power
-        if not is_eclipse[k]:
-            solar_power[k] = dt.solar_panel_power(sun_vec_body[k], sun_vec[k], positions[k], cubesat)
+        # if not is_eclipse[k]:
+        #     solar_power[k] = dt.solar_panel_power(sun_vec_body[k], sun_vec[k], positions[k], cubesat)
 
         # propagate attitude state
         states[k+1] = it.rk4(st.state_dot, time_step, state, controls[k], cubesat.inertia, cubesat.inertia_inv)
