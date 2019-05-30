@@ -1,9 +1,12 @@
+"""
+Code to calculate atmospheric density at a given location in orbit.
+"""
+
 import xarray as xr
 import os
 import numpy as np
 import datetime as dt
 from adcsim.space_weather import create_space_weather_netcdf
-
 from adcsim.Python_NRLMSISE.nrlmsise_00 import *
 from adcsim.Python_NRLMSISE.nrlmsise_00_header import *
 

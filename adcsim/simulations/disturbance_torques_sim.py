@@ -155,7 +155,7 @@ for i in tqdm(range(len(time) - 1)):
         solar_power[i] = dt.solar_panel_power(sun_vec_body[i], sun_obj.to(u.meter).value, positions[i], cubesat)
 
     # propagate attitude state
-    states[i+1] = it.rk4(st.state_dot, time_step, states[i], controls[i], cubesat.inertia, cubesat.inertia_inv)
+    states[i+1] = it.rk4(st.state_dot_mrp, time_step, states[i], controls[i], cubesat.inertia, cubesat.inertia_inv)
 
     # do 'tidy' up things at the end of integration (needed for many types of attitude coordinates)
     states[i+1] = ic.mrp_switching(states[i+1])

@@ -1,3 +1,7 @@
+"""
+The code in this file allows us to get the magnetic field at any point in orbit.
+"""
+
 # this file was copied from https://github.com/cmweiss/geomag and altered to avoid the need to convert to
 # geodetic coordinates and back
 

@@ -1,3 +1,7 @@
+"""
+Model for hysteresis rods. This model is capable of propagating the state of the hysteresis rod. The state being the
+magnetization of it.
+"""
 import numpy as np
 from adcsim.integrators import rk4_general
 

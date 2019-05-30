@@ -23,7 +23,7 @@ for i in range(len(time) - 1):
         controls[i] = [0.005, 0.005, 0.005]
 
     # propagate attitude state
-    states[i+1] = it.rk4(st.state_dot, time_step, states[i], controls[i], inertia, inertia_inv)
+    states[i+1] = it.rk4(st.state_dot_mrp, time_step, states[i], controls[i], inertia, inertia_inv)
 
     # do 'tidy' up things at the end of integration (needed for many types of attitude coordinates)
     states[i+1] = ic.mrp_switching(states[i+1])

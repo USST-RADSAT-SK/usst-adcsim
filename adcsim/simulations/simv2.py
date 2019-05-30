@@ -16,11 +16,11 @@ from tqdm import tqdm
 import xarray as xr
 from scipy.interpolate.interpolate import interp1d
 
-save_every = 10
+save_every = 10  # only save the data every number of iterations
 
 # declare time step for integration
 time_step = 0.01
-end_time = 10000
+end_time = 1000
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
@@ -146,7 +146,7 @@ for i in tqdm(range(len(time) - 1)):
         #     solar_power[k] = dt.solar_panel_power(sun_vec_body[k], sun_vec[k], positions[k], cubesat)
 
         # propagate attitude state
-        states[k+1] = it.rk4(st.state_dot, time_step, state, controls[k], cubesat.inertia, cubesat.inertia_inv)
+        states[k+1] = it.rk4(st.state_dot_mrp, time_step, state, controls[k], cubesat.inertia, cubesat.inertia_inv)
 
         # do 'tidy' up things at the end of integration (needed for many types of attitude coordinates)
         states[k+1] = state = ic.mrp_switching(states[k+1])
@@ -199,7 +199,7 @@ for i in tqdm(range(len(time) - 1)):
             solar_poweri = dt.solar_panel_power(sun_vec_bodyi, sun_veci, positionsi, cubesat)
 
         # propagate attitude state
-        state = it.rk4(st.state_dot, time_step, state, controlsi, cubesat.inertia, cubesat.inertia_inv)
+        state = it.rk4(st.state_dot_mrp, time_step, state, controlsi, cubesat.inertia, cubesat.inertia_inv)
 
         # do 'tidy' up things at the end of integration (needed for many types of attitude coordinates)
         state = ic.mrp_switching(state)

@@ -1,3 +1,21 @@
+"""
+This file contains functions that are used to calculate torques on the satellite.
+
+The disturbance torques from:
+    - Solar Pressure
+    - Aerodynamic pressure
+    - Gravity gradient
+
+Torques from:
+    - total Magnetization of the CubeSat
+    - hysteresis rods
+
+There is also a function in here that calculates to solar power in Watts for given conditions. This is here because of
+how similar the calculation is to the Solar Pressure torque calculation.
+
+"""
+
+
 from adcsim import util as ut
 import numpy as np
 from adcsim.CubeSat_model import CubeSat

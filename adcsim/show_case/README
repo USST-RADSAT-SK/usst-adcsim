@@ -1,0 +1,7 @@
+Ment to introduce this code to beginners.
+
+0_intro starts with a simple integration problem using eulers method.
+
+1_attitude_integration extends this concept to integrating the equations needed to propagate attitude (angular velocity and attitude differential equations at the same time)
+
+2_iss_thing extends this a small amount to show that this 'cool thing' on youtube can be easily replicated.

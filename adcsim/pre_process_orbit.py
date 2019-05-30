@@ -1,3 +1,15 @@
+"""
+This script is meant to make all attitude simulations performed faster. Since we are using the same Two Line Element
+for all of our simulations so far, the orbit and environment (magnetic field, sun vector) is always the same. Running
+this script will save this information to a netcdf file so that it can just be loaded in simulation scripts.
+
+This saved data can be used in your simulation so long as it goes further in time that the simulation you want to run.
+
+The time_step you can use for this script also does not need to be as short as in most of your attitude simulations. A
+10 second time step is fine, but it could probably be even shorter.
+
+In the simulations this data is always interpolated.
+"""
 import numpy as np
 from skyfield.api import load, EarthSatellite, utc
 from astropy.coordinates import get_sun
@@ -7,6 +19,7 @@ from adcsim.atmospheric_density import AirDensityModel
 from adcsim.magnetic_field_model import GeoMag
 from tqdm import tqdm
 import astropy.units as u
+import xarray as xr
 
 # declare time step for integration
 time_step = 10
@@ -77,28 +90,27 @@ sun_obj = get_sun(Time(time_tracks[i+1])).cartesian.xyz
 sun_vec[i+1] = sun_obj.to(u.meter).value
 density[i+1] = air_density.air_mass_density(date=time_tracks[i+1], alt=alts[i+1]/1000, g_lat=lats[i+1], g_long=lons[i+1])
 
+# import matplotlib.pyplot as plt
+#
+#
+# def _plot(data, title='', ylabel=''):
+#     plt.figure()
+#     plt.plot(time, data)
+#     plt.title(title)
+#     plt.xlabel('Time (s)')
+#     plt.ylabel(ylabel)
+#
+#
+# _plot(mag_field)
+# _plot(sun_vec)
+# _plot(density)
+# _plot(positions)
+# _plot(velocities)
+# _plot(lons)
+# _plot(lats)
+# _plot(alts)
 
-import matplotlib.pyplot as plt
 
-
-def _plot(data, title='', ylabel=''):
-    plt.figure()
-    plt.plot(time, data)
-    plt.title(title)
-    plt.xlabel('Time (s)')
-    plt.ylabel(ylabel)
-
-
-_plot(mag_field)
-_plot(sun_vec)
-_plot(density)
-_plot(positions)
-_plot(velocities)
-_plot(lons)
-_plot(lats)
-_plot(alts)
-
-import xarray as xr
 a = xr.Dataset({'sun': (['time', 'cord'], sun_vec),
                 'mag': (['time', 'cord'], mag_field), 'atmos': ('time', density), 'lons': ('time', lons),
                 'lats': ('time', lats), 'alts': ('time', alts), 'positions': (['time', 'cord'], positions),

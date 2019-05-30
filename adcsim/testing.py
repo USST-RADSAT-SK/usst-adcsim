@@ -1,52 +1,43 @@
+"""
+Unit tests of functions throughout this project can be set up here. The idea is that whenever changes are made to
+the code you can rerun all of these unittests to confirm nothing broke from the changes.
+"""
+
 import unittest
 from adcsim import transformations as tr, util as ut
 import numpy as np
-from adcsim.CubeSat_model import Features, Faces
+from adcsim.CubeSat_model import Face2D
 
 
 class CubeSatModelTests(unittest.TestCase):
     @staticmethod
     def test_feature_1():
-        b = np.array([[-1, -1], [-1, 1], [1, 1], [1, -1]])
-        a = Features(b, 1)
+        b = np.array([[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]])
+        a = Face2D(b.T)
         np.testing.assert_equal(a.area, 4.0)
         np.testing.assert_equal(a.centroid, np.zeros(2))
 
     @staticmethod
     def test_feature_2():
-        b = np.array([[-1, -1], [-1, 1], [1, 1]])
-        a = Features(b, 1)
+        b = np.array([[-1, -1], [1, 1], [-1, 1], [-1, -1]])
+        a = Face2D(b.T)
         np.testing.assert_equal(a.area, 2.0)
         centroid = np.array([-1/3, 1/3])
         np.testing.assert_equal(a.centroid, centroid)
 
     @staticmethod
-    def test_feature_3():  # reverse order
-        b = np.array([[-1, -1], [-1, 1], [1, 1], [1, -1]])
-        a = Features(b[::-1], 1)
-        np.testing.assert_equal(a.area, 4.0)
+    def test_feature_3():
+        b = np.array([[-1, -1], [-1, 1], [1, 1], [1, -1], [-1, -1]])  # reverse order
+        a = Face2D(b.T)
+        np.testing.assert_equal(a.area, -4.0)
         np.testing.assert_equal(a.centroid, np.zeros(2))
 
     @staticmethod
     def test_faces_1():
-        f1 = np.array([[-0.8, -0.5], [-0.8, 0.5], [-1, 0.5], [-1, -0.5]])
-        feature1 = Features(f1, 0.6)
-        face1 = Faces(1, 2, feature1, 0.8)
-        np.testing.assert_almost_equal(face1.features[0].centroid, np.array([-0.9, 0.]))
-        np.testing.assert_almost_equal(face1.features[1].centroid, np.array([0.1, 0.]))
-        np.testing.assert_equal(face1.features[1].area, 1.8)
-
-    @staticmethod
-    def test_faces_2():
-        f1 = np.array([[-0.8, -0.5], [-0.8, 0.5], [-1, 0.5], [-1, -0.5]])
-        f2 = np.array([[0.8, -0.5], [0.8, 0.5], [1, 0.5], [1, -0.5]])
-        feature1 = Features(f1, 0.6)
-        feature2 = Features(f2, 0.6)
-        face1 = Faces(1, 2, [feature1, feature2], 0.8)
-        np.testing.assert_almost_equal(face1.features[1].centroid, np.array([0.9, 0.]))
-        np.testing.assert_almost_equal(face1.features[2].centroid, np.array([0., 0.]))
-        np.testing.assert_equal(face1.features[2].area, 1.6)
-
+        f1 = np.array([[-0.8, -0.5], [-0.8, 0.5], [-1, 0.5], [-1, -0.5], [-0.8, -0.5]])
+        face1 = Face2D(f1.T)
+        np.testing.assert_almost_equal(face1.centroid, np.array([-0.9, 0.]))
+        np.testing.assert_almost_equal(face1.area, 0.2)
 
 
 class UtilitiesTests(unittest.TestCase):

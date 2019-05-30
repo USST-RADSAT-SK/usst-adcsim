@@ -1,6 +1,13 @@
 import numpy as np
 from adcsim.CubeSat_model import CubeSat, Face2D, Face3D, Polygons3D
 
+"""
+Create your own CubeSat model. Documentation is coming in the future. A person could look at the examples and altering 
+as they need and should be able to figure it out. You can easily verify that you get what you want by calling the
+.plot() method to visualize the result, as well as verifying your areas and centroids are what you expect.
+"""
+# TODO: Give thorough instructions for how to create ones own CubeSat model
+
 
 class CubeSatEx1(CubeSat):
     def __init__(self):

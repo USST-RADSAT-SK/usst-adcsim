@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import control_laws as cl
-from adcsim import integrators as it, find_reference_frame as rf, transformations as tr, state_propagations as st, \
+from adcsim import integrators as it, transformations as tr, state_propagations as st, \
     integral_considerations as ic
+from adcsim.old import find_reference_frame as rf
 import attitude_estimations as ae
 
 
@@ -48,7 +49,7 @@ for i in range(len(time) - 1):
     controls[i] = cl.control_torque(sigma_br, states[i][1], inertia, K, P, i, controls[i-1], max_torque=max_torque)
 
     # propagate attitude state
-    states[i+1] = it.rk4(st.state_dot, time_step, states[i], controls[i], inertia, inertia_inv)
+    states[i+1] = it.rk4(st.state_dot_mrp, time_step, states[i], controls[i], inertia, inertia_inv)
 
     # do 'tidy' up things at the end of integration (needed for many types of attitude coordinates)
     states[i+1] = ic.mrp_switching(states[i+1])

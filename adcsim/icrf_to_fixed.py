@@ -1,3 +1,8 @@
+"""
+Function give the rotation matrix to convert between and inertial coordinate system and the coordinate system rotating
+with the earth.
+"""
+
 import numpy as np
 import pysofa
 import datetime

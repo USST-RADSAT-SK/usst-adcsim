@@ -1,3 +1,6 @@
+"""
+Chunks of code that can be used for post processing of data after it is saved to a netcdf file
+"""
 import matplotlib.pyplot as plt
 import xarray as xr
 import numpy as np

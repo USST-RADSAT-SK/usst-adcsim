@@ -1,3 +1,5 @@
+""" This set of functions are various random things needed somewhere in the project. """
+
 import numpy as np
 from adcsim import transformations as tr
 

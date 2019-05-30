@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import control_laws as cl
-from adcsim import integrators as it, find_reference_frame as rf, transformations as tr, state_propagations as st, \
+from adcsim import integrators as it, transformations as tr, state_propagations as st, \
     integral_considerations as ic
+from adcsim.old import find_reference_frame as rf
 
 time_step = 0.01
 end_time = 500

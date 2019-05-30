@@ -1,3 +1,12 @@
+"""
+This file contains all the framework for our CubeSat model. The CubeSat model is used to define a geometry.
+This geometry is important for solar pressure torque and aerodynamic torque calculations. As well as solar
+power generation calculations.
+
+The model can also be input to our animation code so that it is view in the animation matplotlib window
+"""
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection

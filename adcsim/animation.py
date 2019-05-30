@@ -1,3 +1,6 @@
+"""
+This file contains all the framework for the matplotlib animations that can be done for a given attitude simulation.
+"""
 import numpy as np
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import matplotlib.pyplot as plt

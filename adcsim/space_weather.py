@@ -1,3 +1,9 @@
+"""
+The code in this file loads space weather information (which is needed to calculate atmospheric densities) from
+celestrak's website and saves it to a netcdf file.
+"""
+
+
 import numpy as np
 import xarray as xr
 import re
