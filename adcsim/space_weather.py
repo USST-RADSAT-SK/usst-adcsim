@@ -16,6 +16,12 @@ url_all = 'http://celestrak.com/SpaceData/SW-All.txt'
 
 def create_space_weather_netcdf(url_string='http://celestrak.com/SpaceData/SW-Last5Years.txt',
                                 output_name='cssi_space_weather.nc'):
+    """
+    Create a netcdf file of space weather information. This data is needed to calculate atmospheric densities.
+    :param url_string: URL to retrieve the data from
+    :param output_name: Name of the saved file
+    :return: None
+    """
     # load the data
     data = urlopen(url_string)
     # create empty lists

@@ -30,9 +30,13 @@ def cross_product_operator(vec):
 
 
 def align_z_to_nadir(pos_vec):
-    # this function takes a position vector and outputs one of the infinite amount of DCM's that represent the
-    # translation from the inertial frame to the body frame, such that the body frames z-axis is perfectly aligned
-    # with the position vector input.
+    """
+    This function takes a position vector and outputs one of the infinite amount of DCM's that represent the
+    translation from the inertial frame to the body frame, such that the body frames z-axis is perfectly aligned
+    with the position vector input.
+    :param pos_vec: position vector from spg4
+    :return: DCM matrix
+    """
     p = pos_vec
     p = p / np.linalg.norm(p)
 
@@ -47,9 +51,15 @@ def align_z_to_nadir(pos_vec):
 
 
 def initial_align_gravity_stabilization(pos_vec, vel_vec):
-    # this function takes a position and velocity vector and outputs the DCM that represents the translation from the
-    # inertial frame to the body frame, such that the body frames z-axis aligns with the position vector and the
-    # body frames y-axis aligns with the cross track (i.e. the direction perpendicular to nadir and the velocity track)
+    """
+    This function takes a position and velocity vector and outputs the DCM that represents the translation from the
+    inertial frame to the body frame, such that the body frames z-axis aligns with the position vector and the
+    body frames y-axis aligns with the cross track (i.e. the direction perpendicular to nadir and the velocity track)
+    :param pos_vec: position vector from spg4
+    :param vel_vec: velocity vector from spg4
+    :return: DCM matrix
+    """
+
     p = pos_vec
     p = p / np.linalg.norm(p)
 
@@ -68,6 +78,16 @@ def initial_align_gravity_stabilization(pos_vec, vel_vec):
 
 
 def inertial_to_orbit_frame(pos_vec, vel_vec):
+    """
+    This function calculates the DCM matrix that translates the inertial frame to the orbit frame.
+
+    The orbit frame has one axis pointing straight nadir, one axis perpendicular to this as well as the velocity
+    direction, and the last axis completes the coordinate system. For a perfectly circular orbit, the last axis is
+    the same direction as the velocity vector.
+    :param pos_vec: position vector from spg4
+    :param vel_vec: velocity vector from spg4
+    :return: DCM matrix
+    """
     p = pos_vec
     p = p / np.linalg.norm(p)
 

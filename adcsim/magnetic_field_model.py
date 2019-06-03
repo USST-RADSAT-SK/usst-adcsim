@@ -309,6 +309,20 @@ class GeoMag:
 
 
 def magnetic_field(date: datetime.datetime, lat, lon, alt, output_format='cartesian'):
+    """
+    Outputs magnetic field given lat, lon, alt.
+    :param date: date
+    :param lat: latitude
+    :param lon: longitude
+    :param alt: altitude
+    :param output_format : str
+            Specifies the output format. Can take the following values:
+            geodetic: output = [north, east, nadir] (nT)
+            compass: output = [declination (deg), inclination (deg), magnitude (nT)]
+            cartesian: output = [x, y, z] (nT) in fixed-Earth coordinate frame
+            inertial: output = [x, y, z] (nT) in inertial coordinate frame
+    :return:
+    """
     g = GeoMag()
     return g.GeoMag(np.array([lat, lon, alt]), date, location_format='geodetic', output_format=output_format)
 

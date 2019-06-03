@@ -49,6 +49,11 @@ class HysteresisRod:
                (self.b_field_top(h) - self.b_field_bottom(h))
 
     def propagate_magnetization(self, h):
+        """
+        propagates the magnetization state of the hysteresis rod.
+        :param h: The current value of the external magnetic field
+        :return: None
+        """
         self.h_current, self.h_previous = h, self.h_current
         self.b_previous = self.b_current
         step = self.h_current - self.h_previous
@@ -60,6 +65,13 @@ class HysteresisRod:
             self.b_current = rk4_general(self.mag_process_negative_h, step, self.h_current, self.b_previous)
 
     def propagate_and_save_magnetization(self, h, i):
+        """
+        Propagates the magnetization state of the hysteresis rod. If the class has been set up to save all the
+        magnetization data, this function saves the data to the self.h and self.b arrays.
+        :param h: The current value of the external magnetic
+        :param i: index of the integration
+        :return: None
+        """
         self.h[i+1] = h
         step = self.h[i+1] - self.h[i]
         if self.h[i+1] >= self.h[i]:

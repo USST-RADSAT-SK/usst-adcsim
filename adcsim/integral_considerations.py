@@ -14,6 +14,12 @@ import numpy as np
 
 
 def mrp_switching(state):
+    """
+    Integral consideration for the Modified Rodriguez Parameter (MRP) attitude parametrization. Checks to see if the
+    magnitude of the MRP vector is greater than one, if it is we 'switch' to the 'Shadow MRP set'.
+    :param state: The current attitude state
+    :return: The attitude state after the switching is done
+    """
     if np.linalg.norm(state[0]) > 1:
         state[0] = -(state[0]) / (state[0] @ state[0])
     return state
