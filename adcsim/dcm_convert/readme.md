@@ -1,4 +1,4 @@
-functions to convert a dcm array to a stk .a file
+## functions to convert a dcm array to a stk .a file
 completely dependant on simv2.py file and format
 
 dcm.py: numpy binary storage of dcm_bn array from adcim\simulations\simv2.py
