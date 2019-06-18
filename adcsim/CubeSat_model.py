@@ -321,12 +321,9 @@ class Face3D:
         return self.face.solar_power_efficiency
 
     def rotate(self, dcm: np.ndarray=None, axis: Union[str, np.ndarray]=None, angle: float=None):
-        if (dcm is None) and (axis is None or angle is None):
-            print('Face3D.rotate: EITHER THE DCM OR BOTH THE AXIS AND THE ANGLE MUST BE SPECIFIED')
-            return
-        elif dcm is not None:
+        if dcm is not None:
             rotation_matrix = dcm.T
-        else:
+        elif axis is not None and angle is not None:
             if isinstance(axis, str):
                 axis = self._unit_vector_from_string(axis)
             axis *= 1.0 / np.linalg.norm(axis)
@@ -335,6 +332,14 @@ class Face3D:
             rotation_matrix = np.array([[c+x*x*(1-c), x*y*(1-c)-z*s, x*z*(1-c)+y*s],
                                         [y*x*(1-c)+z*s, c+y*y*(1-c), y*z*(1-c)-x*s],
                                         [z*x*(1-c)-y*s, z*y*(1-c)+x*s, c+z*z*(1-c)]])
+        elif axis is not None and angle is None:
+            e1 = self._unit_vector_from_string(axis[:2])
+            e2 = self._unit_vector_from_string(axis[2:])
+            e3 = np.cross(e1, e2)
+            rotation_matrix = np.column_stack((e1, e2, e3))
+        else:
+            print('Face3D.rotate: EITHER THE DCM OR TWO CARTESIAN AXES OR AN AXIS AND AND ANGLE MUST BE SPECIFIED')
+            return
         self.translation = rotation_matrix @ self.translation
         self.orientation = rotation_matrix @ self.orientation
 
@@ -467,28 +472,3 @@ class CubeSat(Polygons3D):
     def total_magnetic_moment(self):
         return self._total_magnetic_moment
 
-
-if __name__ == '__main__':
-    from adcsim.CubeSat_model_examples import CubeSatEx1
-
-    cubesat = CubeSatEx1()
-    cubesat.plot()
-    plt.show()
-    exit()
-
-    big_square = Face2D(np.array([[-2., -2.], [2., -2.], [2., 2.], [-2., 2.], [-2., -2.]]).T)
-    little_square = Face2D(np.array([[-1., -1.], [1., -1.], [1., 1.], [-1., 1.], [-1., -1.]]).T)
-    square_with_hole = big_square - (little_square + np.array([0.5, 0.5]))
-
-    print(square_with_hole.area)
-    print(square_with_hole.centroid)
-
-    face_3d = Face3D(square_with_hole, orientation='+z-y', translation=np.array([0., 1., 2.]), color='g')
-    print(face_3d.area)
-    print(face_3d.centroid)
-    print(face_3d.normal)
-
-    poly_3d = Polygons3D([face_3d])
-
-    poly_3d.plot()
-    plt.show()
