@@ -134,7 +134,7 @@ class Face2D:
         return self._solar_power_efficiency
 
     def copy(self):
-        return Face2D(self.vertices.copy(), *self._kwargs)
+        return Face2D(self.vertices.copy(), **self._kwargs)
 
     def __add__(self, other):
         if isinstance(other, np.ndarray):
