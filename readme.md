@@ -15,7 +15,7 @@ https://www.coursera.org/specializations/spacecraft-dynamics-control
 ## Setup Instructions
 These setup instructions require Anaconda and git to be installed on your computer (no need for Pycharm).
 
-Open up the 'Anaconda Prompt' program, or your favorite command line program that has Anaconda. Then create a python environment with:
+Open up the 'Anaconda Prompt' program (or your favorite command line program that has Anaconda). Then create a python environment with:
 
 ```$ conda create -n your_env_name python=3.7```
 
@@ -59,8 +59,8 @@ slow enough for the given simulation, otherwise the solution can make no sense. 
 * omega0; the initial angular velocity in the inertial frame; rad/s 
 * sigma0; the initial attitude of the CubeSat represented with MRP attitude coordinates
 * Parameters of the CubeSat model. There are many different models that could be created, and this can be done by 
-creating a class in the 'CubeSat_model_examples.py" file that inherits from the 'CubeSat' class. There are a few example in this 
-file. The CubeSatAerodynamicEx1 is the model that is up to date with our current best knowledge of the satellite.
+creating a class in the 'CubeSat_model_examples.py" file that inherits from the 'CubeSat' class. There are a few examples in this 
+file. The CubeSatAerodynamicEx1 model is the model that is up to date with our current best knowledge of the satellite.
 The common user with likely just use this one.
     * center_of_mass; the center of mass of the CubeSat (array of length 3 specifying the distance from the center of 
     geometry and the center of mass in each axis); meters; This should be close to zero for our final design.
@@ -83,10 +83,10 @@ All of these parameters declarations can be found and changed in the simv2.py sc
 A list of additional things a user could change:
 
 * The data that is being saved to the netcdf file. E.g. the user might wish to save each disturbance torque individually 
-so that they can look at them in post processing, rather than just saving the sum of them. This would be done by editing
+so that they can use them in post processing, rather than just saving the sum of them. This would be done by editing
 the creation of the Dataset before it is saved.
-* Only a few elements of the simulation are plotted in the post_processing script, the user should feel free to add 
-an comment out blocks of code in this script as you need, or write their own entirely new post processing scripts. 
+* Only a few elements of the simulation are plotted in the post_processing script. So, the user should feel free to add 
+and comment out blocks of code in this script as they need, or write their own entirely new post processing scripts. 
 E.g. Someone may be interested in looking at solar power generation. 
 * The animation can be changed to suit your needs
 
