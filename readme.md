@@ -24,3 +24,5 @@ https://www.coursera.org/specializations/spacecraft-dynamics-control
 and then:
 
 ```pip install .```
+
+when you are inside the directory of the pysofa repo.

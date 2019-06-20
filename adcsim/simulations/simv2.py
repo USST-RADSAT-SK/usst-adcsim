@@ -1,17 +1,12 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from adcsim import disturbance_torques as dt, integrators as it, transformations as tr, util as ut, \
     state_propagations as st, integral_considerations as ic
-from skyfield.api import load, EarthSatellite, utc
-from astropy.coordinates import get_sun
-from astropy.time import Time
-import astropy.units as u
+from skyfield.api import utc
 from adcsim.CubeSat_model_examples import CubeSatSolarPressureEx1
 from adcsim.hysteresis_rod import HysteresisRod
 from datetime import datetime, timedelta
 from adcsim.atmospheric_density import AirDensityModel
 from adcsim.magnetic_field_model import GeoMag
-from adcsim.animation import AnimateAttitudeInside, DrawingVectors, AdditionalPlots
 from tqdm import tqdm
 import xarray as xr
 from scipy.interpolate.interpolate import interp1d
@@ -20,7 +15,7 @@ save_every = 10  # only save the data every number of iterations
 
 # declare time step for integration
 time_step = 0.01
-end_time = 1000
+end_time = 500
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
@@ -62,7 +57,7 @@ is_eclipse = np.zeros(le)
 hyst_rod = np.zeros((le, 3))
 
 # load saved data
-save_data = xr.open_dataset('saved_data.nc')
+save_data = xr.open_dataset('../../saved_data.nc')
 time_track = datetime(2019, 3, 24, 18, 35, 1, tzinfo=utc)
 final_time = time_track + timedelta(seconds=time_step*len(time))
 saved_data = save_data.sel(time=slice(None, final_time))
@@ -78,6 +73,7 @@ interp_data = interp1d(x, ab.T)
 def interp_info(i):
     ac = interp_data(i)
     return ac[0: 3], ac[3: 6], ac[6], ac[7], ac[8], ac[9], ac[10: 13], ac[13: 16]
+
 
 # initialize attitude so that z direction of body frame is aligned with nadir
 sun_vec[0], mag_field[0], density[0], lons[0], lats[0], alts[0], positions[0], velocities[0] = interp_info(0)
@@ -142,8 +138,8 @@ for i in tqdm(range(len(time) - 1)):
         controls[k] = aerod[k] + solard[k] + gravityd[k] + magneticd[k] + hyst_rod[k]
 
         # calculate solar power
-        # if not is_eclipse[k]:
-        #     solar_power[k] = dt.solar_panel_power(sun_vec_body[k], sun_vec[k], positions[k], cubesat)
+        if not is_eclipse[k]:
+            solar_power[k] = dt.solar_panel_power(sun_vec_body[k], sun_vec[k], positions[k], cubesat)
 
         # propagate attitude state
         states[k+1] = it.rk4(st.state_dot_mrp, time_step, state, controls[k], cubesat.inertia, cubesat.inertia_inv)
@@ -228,4 +224,4 @@ if __name__ == "__main__":
                           'end_time': final_time.strftime('%Y/%m/%d %H:%M:%S'),
                           'time_step': time_step, 'save_every': save_every, 'end_time': end_time,
                           'Description': 'large rods and small mag'})
-    a.to_netcdf('run5.nc')
+    a.to_netcdf('../../run0.nc')

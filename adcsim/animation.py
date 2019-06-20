@@ -38,7 +38,7 @@ class DrawingVectors:
                                 "length 2 lists")
 
         if draw_type == 'axes':
-            assert (check_data.shape == (3, 3)), "can only get axes from a 3x3 DCM matrix"
+            assert (check_data.shape == (3, 3)), "can only have draw_type == 'axes' for a 3x3 DCM matrix"
 
             if (not isinstance(color, str) and isinstance(color, list) and not len(color) == 3) or \
                     (not isinstance(label, str) and isinstance(label, list) and not len(label) == 3) or \
