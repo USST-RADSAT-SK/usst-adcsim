@@ -116,4 +116,4 @@ a = xr.Dataset({'sun': (['time', 'cord'], sun_vec),
                 'lats': ('time', lats), 'alts': ('time', alts), 'positions': (['time', 'cord'], positions),
                 'velocities': (['time', 'cord'], velocities)},
                coords={'time': time_tracks, 'cord': ['x', 'y', 'z']})
-a.to_netcdf('saved_data.nc')
+a.to_netcdf('../saved_data.nc')

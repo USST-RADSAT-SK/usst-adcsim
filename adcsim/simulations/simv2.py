@@ -5,8 +5,6 @@ from skyfield.api import utc
 from adcsim.CubeSat_model_examples import CubeSatSolarPressureEx1
 from adcsim.hysteresis_rod import HysteresisRod
 from datetime import datetime, timedelta
-from adcsim.atmospheric_density import AirDensityModel
-from adcsim.magnetic_field_model import GeoMag
 from tqdm import tqdm
 import xarray as xr
 from scipy.interpolate.interpolate import interp1d
@@ -15,7 +13,7 @@ save_every = 10  # only save the data every number of iterations
 
 # declare time step for integration
 time_step = 0.01
-end_time = 500
+end_time = 50000
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
@@ -23,12 +21,6 @@ rod1 = HysteresisRod(0.35, 0.73, 1.59, volume=0.075/(100**3), axes_alignment=np.
 rod2 = HysteresisRod(0.35, 0.73, 1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 1.0, 0]))
 cubesat = CubeSatSolarPressureEx1(inertia=np.diag([0.00309, 0.00417, 0.00363]), magnetic_moment=np.array([1.0, 0, 0]),
                                   hyst_rods=[rod1, rod2])
-
-# create atmospheric density model
-air_density = AirDensityModel()
-
-# create magnetic field model
-geomag = GeoMag()
 
 # declare memory
 le = int(len(time)/save_every)
@@ -88,7 +80,6 @@ dcm_on[0] = ut.inertial_to_orbit_frame(positions[0], velocities[0])
 dcm_bo[0] = dcm_bn[0] @ dcm_on[0].T
 
 # Put hysteresis rods in an initial state that is reasonable. (Otherwise you can get large magnetization from the rods)
-mag_field[0] = geomag.GeoMag(np.array([lats[0], lons[0], alts[0]]), time_track, output_format='inertial')
 mag_field_body[0] = (dcm_bn[0] @ mag_field[0]) * 10 ** -9  # in the body frame in units of T
 for rod in cubesat.hyst_rods:
     axes = np.argwhere(rod.axes_alignment == 1)[0][0]
@@ -221,7 +212,7 @@ if __name__ == "__main__":
                     'solar_power': ('time', solar_power)},
                    coords={'time': np.arange(0, le, 1), 'cord': ['x', 'y', 'z']},
                    attrs={'start_time': time_track.strftime('%Y/%m/%d %H:%M:%S'),
-                          'end_time': final_time.strftime('%Y/%m/%d %H:%M:%S'),
+                          'final_time': final_time.strftime('%Y/%m/%d %H:%M:%S'),
                           'time_step': time_step, 'save_every': save_every, 'end_time': end_time,
                           'Description': 'large rods and small mag'})
     a.to_netcdf('../../run0.nc')

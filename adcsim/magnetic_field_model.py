@@ -221,8 +221,8 @@ class GeoMag:
             raise ValueError(f'Invalid output format \'{output_format}\'')
 
     def __init__(self, wmm_filename=None):
-        if not wmm_filename:
-            wmm_filename = os.path.join(os.path.dirname(__file__), 'WMM_2015_v2.COF')
+        if wmm_filename is None:
+            wmm_filename = os.getcwd() + '/WMM_2015_v2.COF'
         print(wmm_filename)
 
         wmm=[]
