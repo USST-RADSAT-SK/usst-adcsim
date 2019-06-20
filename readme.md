@@ -29,7 +29,11 @@ Install all dependencies with two commands:
 
 ```$ pip install skyfield tqdm```
 
-Then clone this projects github repository with:
+Then, ensure that you have git lfs installed with:
+
+```$ git lfs install```
+
+clone this projects github repository with:
 
 ```$ git clone https://github.com/usst-adcs/U-of-Colorado_course.git```
 
