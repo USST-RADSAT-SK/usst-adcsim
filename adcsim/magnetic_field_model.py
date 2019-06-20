@@ -222,7 +222,7 @@ class GeoMag:
 
     def __init__(self, wmm_filename=None):
         if wmm_filename is None:
-            wmm_filename = os.getcwd() + '/WMM_2015_v2.COF'
+            wmm_filename = os.path.join(os.path.dirname(__file__), 'WMM_2015_v2.COF')
         print(wmm_filename)
 
         wmm=[]
