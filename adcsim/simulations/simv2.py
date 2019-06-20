@@ -2,7 +2,7 @@ import numpy as np
 from adcsim import disturbance_torques as dt, integrators as it, transformations as tr, util as ut, \
     state_propagations as st, integral_considerations as ic
 from skyfield.api import utc
-from adcsim.CubeSat_model_examples import CubeSatSolarPressureEx1
+from adcsim.CubeSat_model_examples import CubeSatAerodynamicEx1
 from adcsim.hysteresis_rod import HysteresisRod
 from datetime import datetime, timedelta
 from tqdm import tqdm
@@ -18,10 +18,10 @@ end_time = 100
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
-rod1 = HysteresisRod(0.35, 0.73, 1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 0, 1.0]))
-rod2 = HysteresisRod(0.35, 0.73, 1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 1.0, 0]))
-cubesat = CubeSatSolarPressureEx1(inertia=np.diag([0.00309, 0.00417, 0.00363]), magnetic_moment=np.array([1.0, 0, 0]),
-                                  hyst_rods=[rod1, rod2])
+rod1 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 0, 1.0]))
+rod2 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 1.0, 0]))
+cubesat = CubeSatAerodynamicEx1(inertia=np.diag([0.00309, 0.00417, 0.00363]), magnetic_moment=np.array([1.0, 0, 0]),
+                                hyst_rods=[rod1, rod2])
 
 # declare memory
 le = int(len(time)/save_every)
