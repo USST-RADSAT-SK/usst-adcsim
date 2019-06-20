@@ -20,6 +20,7 @@ from adcsim.magnetic_field_model import GeoMag
 from tqdm import tqdm
 import astropy.units as u
 import xarray as xr
+import os
 
 # declare time step for integration
 time_step = 10
@@ -116,4 +117,4 @@ a = xr.Dataset({'sun': (['time', 'cord'], sun_vec),
                 'lats': ('time', lats), 'alts': ('time', alts), 'positions': (['time', 'cord'], positions),
                 'velocities': (['time', 'cord'], velocities)},
                coords={'time': time_tracks, 'cord': ['x', 'y', 'z']})
-a.to_netcdf('../saved_data.nc')
+a.to_netcdf(os.path.join(os.path.dirname(__file__), '../saved_data.nc'))

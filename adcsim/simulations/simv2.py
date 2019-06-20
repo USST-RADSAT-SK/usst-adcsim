@@ -8,12 +8,13 @@ from datetime import datetime, timedelta
 from tqdm import tqdm
 import xarray as xr
 from scipy.interpolate.interpolate import interp1d
+import os
 
 save_every = 10  # only save the data every number of iterations
 
 # declare time step for integration
 time_step = 0.01
-end_time = 50000
+end_time = 100
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
@@ -49,7 +50,7 @@ is_eclipse = np.zeros(le)
 hyst_rod = np.zeros((le, 3))
 
 # load saved data
-save_data = xr.open_dataset('../../saved_data.nc')
+save_data = xr.open_dataset(os.path.join(os.path.dirname(__file__), '../../saved_data.nc'))
 time_track = datetime(2019, 3, 24, 18, 35, 1, tzinfo=utc)
 final_time = time_track + timedelta(seconds=time_step*len(time))
 saved_data = save_data.sel(time=slice(None, final_time))
@@ -215,4 +216,4 @@ if __name__ == "__main__":
                           'final_time': final_time.strftime('%Y/%m/%d %H:%M:%S'),
                           'time_step': time_step, 'save_every': save_every, 'end_time': end_time,
                           'Description': 'large rods and small mag'})
-    a.to_netcdf('../../run0.nc')
+    a.to_netcdf(os.path.join(os.path.dirname(__file__), '../../run0.nc'))
