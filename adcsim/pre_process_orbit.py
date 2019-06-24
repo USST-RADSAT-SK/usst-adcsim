@@ -117,4 +117,4 @@ a = xr.Dataset({'sun': (['time', 'cord'], sun_vec),
                 'lats': ('time', lats), 'alts': ('time', alts), 'positions': (['time', 'cord'], positions),
                 'velocities': (['time', 'cord'], velocities)},
                coords={'time': time_tracks, 'cord': ['x', 'y', 'z']})
-a.to_netcdf(os.path.join(os.path.dirname(__file__), '../saved_data.nc'))
+a.to_netcdf(os.path.join(os.path.dirname(__file__), '../orbit_pre_process.nc'))

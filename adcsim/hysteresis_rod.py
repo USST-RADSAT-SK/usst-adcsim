@@ -28,6 +28,10 @@ class HysteresisRod:
         else:
             self.b = self.h = None
 
+    def asdict(self):
+        return {'br': self.br, 'bs': self.bs, 'hc': self.hc, 'volume': self.volume,
+                'axes_alignment': self.axes_alignment.tolist()}
+
     def b_field_top(self, h):
         return 2 * self.bs * np.arctan(self.k * (h + self.hc))/np.pi
 

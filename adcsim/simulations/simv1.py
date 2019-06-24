@@ -60,7 +60,7 @@ is_eclipse = np.zeros(len(time))
 hyst_rod = np.zeros((len(time), 3))
 
 # load saved data
-save_data = xr.open_dataset('saved_data.nc')
+save_data = xr.open_dataset('orbit_pre_process.nc')
 time_tracks = [datetime(2019, 3, 24, 18, 35, 1, tzinfo=utc) + timedelta(seconds=time_step*i) for i in range(len(time))]
 saved_data = save_data.interp(time=time_tracks)
 sun_vec = saved_data.sun.values

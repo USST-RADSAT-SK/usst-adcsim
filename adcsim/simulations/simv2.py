@@ -2,7 +2,7 @@ import numpy as np
 from adcsim import disturbance_torques as dt, integrators as it, transformations as tr, util as ut, \
     state_propagations as st, integral_considerations as ic
 from skyfield.api import utc
-from adcsim.CubeSat_model_examples import CubeSatAerodynamicEx1
+from adcsim.CubeSat_model_examples import CubeSatModel
 from adcsim.hysteresis_rod import HysteresisRod
 from datetime import datetime, timedelta
 from tqdm import tqdm
@@ -14,14 +14,14 @@ save_every = 10  # only save the data every number of iterations
 
 # declare time step for integration
 time_step = 0.01
-end_time = 100
+end_time = 6000
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
 rod1 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 0, 1.0]))
 rod2 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 1.0, 0]))
-cubesat = CubeSatAerodynamicEx1(inertia=np.diag([0.00309, 0.00417, 0.00363]), magnetic_moment=np.array([1.0, 0, 0]),
-                                hyst_rods=[rod1, rod2])
+cubesat = CubeSatModel(inertia=np.diag([0.00309, 0.00417, 0.00363]), magnetic_moment=np.array([1.0, 0, 0]),
+                       hyst_rods=[rod1, rod2])
 
 # declare memory
 le = int(len(time)/save_every)
@@ -50,15 +50,15 @@ is_eclipse = np.zeros(le)
 hyst_rod = np.zeros((le, 3))
 
 # load saved data
-save_data = xr.open_dataset(os.path.join(os.path.dirname(__file__), '../../saved_data.nc'))
-time_track = datetime(2019, 3, 24, 18, 35, 1, tzinfo=utc)
-final_time = time_track + timedelta(seconds=time_step*len(time))
-saved_data = save_data.sel(time=slice(None, final_time))
-x = np.linspace(0, len(time), len(saved_data.time))
-a = len(saved_data.time)
-ab = np.concatenate((saved_data.sun.values, saved_data.mag.values, saved_data.atmos.values.reshape(a, 1),
-                     saved_data.lons.values.reshape(a, 1), saved_data.lats.values.reshape(a, 1),
-                     saved_data.alts.values.reshape(a, 1), saved_data.positions.values, saved_data.velocities.values),
+saved_data = xr.open_dataset(os.path.join(os.path.dirname(__file__), '../../orbit_pre_process.nc'))
+start_time = datetime(2019, 3, 24, 18, 35, 1, tzinfo=utc)
+final_time = start_time + timedelta(seconds=time_step*len(time))
+orbit_data = saved_data.sel(time=slice(None, final_time))
+x = np.linspace(0, len(time), len(orbit_data.time))
+a = len(orbit_data.time)
+ab = np.concatenate((orbit_data.sun.values, orbit_data.mag.values, orbit_data.atmos.values.reshape(a, 1),
+                     orbit_data.lons.values.reshape(a, 1), orbit_data.lats.values.reshape(a, 1),
+                     orbit_data.alts.values.reshape(a, 1), orbit_data.positions.values, orbit_data.velocities.values),
                     axis=1)
 interp_data = interp1d(x, ab.T)
 
@@ -198,6 +198,10 @@ if __name__ == "__main__":
     sigmas = states[:, 0]
 
     # save the data
+    sim_params_dict = {'time_step': time_step, 'save_every': save_every, 'end_time_index': end_time,
+                       'start_time': start_time.strftime('%Y/%m/%d %H:%M:%S'),
+                       'final_time': final_time.strftime('%Y/%m/%d %H:%M:%S'), 'omega0': omega0.tolist(),
+                       'sigma0': sigma0.tolist()}
     a = xr.Dataset({'sun': (['time', 'cord'], sun_vec),
                     'mag': (['time', 'cord'], mag_field),
                     'atmos': ('time', density),
@@ -212,8 +216,9 @@ if __name__ == "__main__":
                     'controls': (['time', 'cord'], controls),
                     'solar_power': ('time', solar_power)},
                    coords={'time': np.arange(0, le, 1), 'cord': ['x', 'y', 'z']},
-                   attrs={'start_time': time_track.strftime('%Y/%m/%d %H:%M:%S'),
-                          'final_time': final_time.strftime('%Y/%m/%d %H:%M:%S'),
-                          'time_step': time_step, 'save_every': save_every, 'end_time': end_time,
-                          'Description': 'large rods and small mag'})
+                   attrs={'simulation_parameters': str(sim_params_dict), 'cubesat_parameters': str(cubesat.asdict()),
+                          'description': 'University of kentucky attitude propagator software '
+                                         '(they call it SNAP) recreation'})
+    # Note: the simulation and cubesat parameter dictionaries are saved as strings for the nc file. If you wish
+    # you could just eval(a.cubesat_parameters) to get the dictionary back.
     a.to_netcdf(os.path.join(os.path.dirname(__file__), '../../run0.nc'))

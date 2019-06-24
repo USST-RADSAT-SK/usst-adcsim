@@ -60,6 +60,18 @@ legend: Parameter name in the code; parameter description; units of parameter (i
 * time_step; the numerical integration time step for the integration of the attitude; seconds; The time_step must be 
 slow enough for the given simulation, otherwise the solution can make no sense. It varies from simulation to simulation.
 * end_time; the ending time of the simulation; seconds; the start time is hardcoded to be 0
+* save_every; the number of iterations per every data point saved on file; None; This could easily be equal to 1, expect 
+for the cases where the simulation is ran with a low time step and for a long time. In this case saving all the data of 
+each iteration would be cumbersome.
+* start_time; the starting date of the simulation; None; This probably does not need to be changed, and it is sort of 
+difficult to change. It can't be made any earlier in time but it could be made later in time. But the further you go in time the
+less accurate the propagation gets for predicting the true orbit (I think i heard once that after 14 days of propagating 
+a single TLE it tends to get pretty un-accurate, but that could be a relative statement to a specific application). 
+This is all because the orbit propagation is done by just loading a Two Line Element (TLE) for some cubesat in an ISS 
+orbit and using a package (skyfield) to propagate the orbit. We have used the same individual TLE since the beginning of 
+this project development. If a new one is ever wanted to be used for some reason then the 'pre_process_orbit.py' script 
+would have to be rerun to get the new orbit information. This script is separate because it only needs to be ran once 
+and then the data can be reused for every simulation.
 * omega0; the initial angular velocity in the inertial frame; rad/s 
 * sigma0; the initial attitude of the CubeSat represented with MRP attitude coordinates
 * Parameters of the CubeSat model. There are many different models that could be created, and this can be done by 

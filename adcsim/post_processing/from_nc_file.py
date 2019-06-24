@@ -4,7 +4,7 @@ Chunks of code that can be used for post processing of data after it is saved to
 import matplotlib.pyplot as plt
 import xarray as xr
 import numpy as np
-from adcsim.CubeSat_model_examples import CubeSatSolarPressureEx1
+from adcsim.CubeSat_model_examples import CubeSatModel
 from adcsim.animation import AnimateAttitude, DrawingVectors, AdditionalPlots
 import os
 
@@ -15,7 +15,7 @@ le = int(len(time)/data.save_every)
 
 # declare a CubeSat (This is only for animations, the cubesat does not need to match the one used in the run,
 # you may want it to look the same tho)
-cubesat = CubeSatSolarPressureEx1()
+cubesat = CubeSatModel()
 
 
 def _plot(datas, title='', ylabel=''):

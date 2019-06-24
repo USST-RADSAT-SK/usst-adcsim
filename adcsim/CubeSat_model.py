@@ -423,6 +423,7 @@ class Polygons3D:
         for face in self.faces:
             face.translate(vector)
 
+
 class CubeSat(Polygons3D):
     """
     Inherits from Polygons3D but adds the following properties:
@@ -471,4 +472,17 @@ class CubeSat(Polygons3D):
     @property
     def total_magnetic_moment(self):
         return self._total_magnetic_moment
+
+    def asdict(self):
+        d = {'center_of_mass': self.center_of_mass.tolist(), 'inertia': self.inertia.tolist(),
+             'residual_magnetic_moment': self.residual_magnetic_moment.tolist(),
+             'magnetic_moment': self.magnetic_moment.tolist(),
+             'total_magnetic_moment': self.total_magnetic_moment.tolist()}
+
+        a = []
+        for rod in self.hyst_rods:
+            a.append(rod.asdict())
+        d['hyst_rods'] = a
+
+        return d
 
