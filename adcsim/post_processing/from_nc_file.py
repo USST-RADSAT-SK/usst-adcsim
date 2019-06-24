@@ -10,8 +10,9 @@ import os
 
 # load data from the run
 data = xr.open_dataset(os.path.join(os.path.dirname(__file__), '../../run0.nc'))
-time = np.arange(0, data.end_time, data.time_step)
-le = int(len(time)/data.save_every)
+sim_params = eval(data.simulation_parameters)
+time = np.arange(0, sim_params['end_time_index'], sim_params['time_step'])
+le = int(len(time)/sim_params['save_every'])
 
 # declare a CubeSat (This is only for animations, the cubesat does not need to match the one used in the run,
 # you may want it to look the same tho)
@@ -20,7 +21,7 @@ cubesat = CubeSatModel()
 
 def _plot(datas, title='', ylabel=''):
     plt.figure()
-    plt.plot(time[::data.save_every], datas)
+    plt.plot(time[::sim_params['save_every']], datas)
     plt.title(title)
     plt.xlabel('Time (s)')
     plt.ylabel(ylabel)
