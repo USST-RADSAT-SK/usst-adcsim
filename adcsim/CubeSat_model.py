@@ -4,6 +4,14 @@ This geometry is important for solar pressure torque and aerodynamic torque calc
 power generation calculations.
 
 The model can also be input to our animation code so that it is view in the animation matplotlib window
+
+A quick summary of the classes used and their purposes is presented below:
+ - Face2D: This class specifies a two dimensional shape and some assorted surface properties.
+ - Face3D: This class is a wrapper around a single Face2D object which positions the 2D face in 3D space.
+ - Polygon3D: This class represents a 3D polygon by holding onto a list of Face3D objects. It allows you to
+     translate and rotate the polygon as a whole.
+ - Cubesat3D: This class inherits from Polygon3D but adds useful information such as center of mass, moment of
+     inertia and magnetic properties.
 """
 
 
@@ -15,20 +23,47 @@ from adcsim.hysteresis_rod import HysteresisRod
 
 
 class Face2D:
+    """
+    Defines a 2D shape as well as various surface properties.
+
+    Rules for specifying vertices:
+     - a shape is specified by vertices listed in the counterclockwise direction with the first/last vertex repeated
+     - a hole is specified by vertices listed in the clockwise direction with the first/last vertex repeated
+     - each distinct shape or hole specified by the same list should be separated by the first vertex of the entire
+     list, which should also be repeated at the end of the list
+     - ex: two distinct triangles ABC and abc would be represented by ABCAabcaA
+     - ex: triangle ABC with hole abc would be represented by ABCAacbaA
+    These rules allow the algorithms for calculating the area and the centroid to work with multiple shapes/holes.
+
+    It may be easier to specify each shape/hole separately and to combine them using addition and subtraction operators
+    which will combine them as specified above. Subtraction reverses the order of the vertices, turning shapes into
+    holes and vice versa.
+
+    Numpy arrays of length 2 can also be added to and subtracted from Face2D objects - this will simply translate all
+    vertices.
+
+    The surface properties are called by functions that calculate aerodynamic disturbance torques, solar pressure
+    disturbance torques, or solar power.
+    """
     def __init__(self, vertices: np.ndarray, sigma_n: float=0.8, sigma_t: float=0.8, spec_ref_coeff: float=0.6,
                  diff_ref_coeff: float=0.0, accommodation_coeff: float=0.9, solar_power_efficiency: float=None):
         """
         Parameters
         ----------
         vertices : np.ndarray
-            2D vertices, shape (2, n) - Should be specified in the counterclockwise direction, and the first and last
-            point should be the same. Holes can be specified by appending the vertices of the hole listed in the
-            clockwise direction. The first and last vertices of the outer polygon, as well as the first and last
-            vertices of each hole, should also be the same.
+            List of 2D vertices, shape (2, n) - see class docstring for ordering.
         sigma_n : float
             Normal momentum exchange coefficient, used to compute the aerodynamic force on a surface.
         sigma_t : float
             Tangential momentum exchange coefficient, used to compute the aerodynamic force on a surface.
+        spec_ref_coeff : float
+            Specular reflectance coefficient
+        diff_ref_coeff : float
+            Diffuse reflectance coefficient
+        accommodation_coeff : float
+            Accommodation coefficient
+        solar_power_efficiency : float
+            Solar power efficiency
         """
 
         assert(len(vertices.shape) == 2)
@@ -48,8 +83,15 @@ class Face2D:
             self.is_solar_panel = True
         else:
             self.is_solar_panel = False
-        self._args_tuple = (sigma_n, sigma_t, spec_ref_coeff, diff_ref_coeff, accommodation_coeff,
-                            solar_power_efficiency)
+
+        self._kwargs = dict(
+            sigma_n=sigma_n,
+            sigma_t=sigma_t,
+            spec_ref_coeff=spec_ref_coeff,
+            diff_ref_coeff=diff_ref_coeff,
+            accommodation_coeff=accommodation_coeff,
+            solar_power_efficiency=solar_power_efficiency
+        )
 
     @property
     def vertices(self):
@@ -92,14 +134,14 @@ class Face2D:
         return self._solar_power_efficiency
 
     def copy(self):
-        return Face2D(self.vertices.copy(), *self._args_tuple)
+        return Face2D(self.vertices.copy(), **self._kwargs)
 
     def __add__(self, other):
         if isinstance(other, np.ndarray):
-            return Face2D(self.vertices + other.reshape(2, 1), *self._args_tuple)
+            return Face2D(self.vertices + other.reshape(2, 1), **self._kwargs)
         elif isinstance(other, Face2D):
             return Face2D(np.concatenate((self.vertices, other.vertices, self.vertices[:, :1]), axis=1),
-                          *self._args_tuple)
+                          **self._kwargs)
         else:
             raise TypeError(f'Cannot add object of type {type(other)} to Face2D object')
 
@@ -115,10 +157,10 @@ class Face2D:
 
     def __sub__(self, other):
         if isinstance(other, np.ndarray):
-            return Face2D(self.vertices - other.reshape(2, 1), *self._args_tuple)
+            return Face2D(self.vertices - other.reshape(2, 1), **self._kwargs)
         elif isinstance(other, Face2D):
             return Face2D(np.concatenate((self.vertices, other.vertices[:, ::-1], self.vertices[:, :1]), axis=1),
-                          *self._args_tuple)
+                          **self._kwargs)
         else:
             raise TypeError(f'Cannot subtract object of type {type(other)} from Face2D object')
 
@@ -135,7 +177,7 @@ class Face2D:
     @staticmethod
     def _polygon_area(v: np.ndarray):
         """
-        https://en.wikipedia.org/wiki/Centroid#Of_a_polygon
+        https://en.wikipedia.org/wiki/Polygon#Area
         """
         n = v.shape[1]
         a = 0.0
@@ -158,6 +200,34 @@ class Face2D:
 
 
 class Face3D:
+    """
+    This class is a wrapper around a Face2D object that positions the 2D shape in 3D space.
+
+    The raw Face2D object is assumed to start in the xy plane. It is then rotated by the rotation matrix passed to the
+    orientation parameter and translated by the vector passed to the translation parameter.
+
+    Certain rotations can be specified by string shortcuts instead of rotation matrices:
+     - axis directions are specified by a sign ('+' or '-') and an axis ('x' or 'y' or 'z')
+     - the first two characters represent the new direction for the old positive x axis
+     - the second two characters represent the new direction for the old positive y axis
+     - ex: '+x+y' would cause no rotation, '+y-x' would cause 90 degree rotation about the positive z axis
+
+    Changing the orientation property or the translation property will override its previous value and apply the new
+    rotation or translation to the original position of the 2D face in the xy plane. When either of these
+    properties is updated, the (possibly new) rotation matrix is applied to the original face first, and the
+    (possibly new) translation vector is applied second.
+
+    To rotate and translate the face relative to its current orientation and translation, the rotate method and the
+    translate method should be called.
+    """
+    _unit_vectors = {
+        '+x': np.array([1., 0., 0.]),
+        '-x': np.array([-1., 0., 0.]),
+        '+y': np.array([0., 1., 0.]),
+        '-y': np.array([0., -1., 0.]),
+        '+z': np.array([0., 0., 1.]),
+        '-z': np.array([0., 0., -1.]),
+    }
     def __init__(self, face: Face2D, orientation: Union[str, np.ndarray]='+x+y', translation: np.ndarray=np.zeros(3), name='', color='k'):
         self._orientation = np.eye(3)
         self._translation = np.zeros((3, 1))
@@ -251,12 +321,9 @@ class Face3D:
         return self.face.solar_power_efficiency
 
     def rotate(self, dcm: np.ndarray=None, axis: Union[str, np.ndarray]=None, angle: float=None):
-        if (dcm is None) and (axis is None or angle is None):
-            print('Face3D.rotate: EITHER THE DCM OR BOTH THE AXIS AND THE ANGLE MUST BE SPECIFIED')
-            return
-        elif dcm is not None:
+        if dcm is not None:
             rotation_matrix = dcm.T
-        else:
+        elif axis is not None and angle is not None:
             if isinstance(axis, str):
                 axis = self._unit_vector_from_string(axis)
             axis *= 1.0 / np.linalg.norm(axis)
@@ -265,6 +332,14 @@ class Face3D:
             rotation_matrix = np.array([[c+x*x*(1-c), x*y*(1-c)-z*s, x*z*(1-c)+y*s],
                                         [y*x*(1-c)+z*s, c+y*y*(1-c), y*z*(1-c)-x*s],
                                         [z*x*(1-c)-y*s, z*y*(1-c)+x*s, c+z*z*(1-c)]])
+        elif axis is not None and angle is None:
+            e1 = self._unit_vector_from_string(axis[:2])
+            e2 = self._unit_vector_from_string(axis[2:])
+            e3 = np.cross(e1, e2)
+            rotation_matrix = np.column_stack((e1, e2, e3))
+        else:
+            print('Face3D.rotate: EITHER THE DCM OR TWO CARTESIAN AXES OR AN AXIS AND AND ANGLE MUST BE SPECIFIED')
+            return
         self.translation = rotation_matrix @ self.translation
         self.orientation = rotation_matrix @ self.orientation
 
@@ -276,23 +351,10 @@ class Face3D:
                       name=self.name, color=self.color)
 
     def _unit_vector_from_string(self, string):
-        if string[1] == 'x':
-            v = np.array([1., 0., 0.])
-        elif string[1] == 'y':
-            v = np.array([0., 1., 0.])
-        elif string[1] == 'z':
-            v = np.array([0., 0., 1.])
+        if string in self._unit_vectors:
+            return self._unit_vectors[string]
         else:
             print('Face3D._unit_vector_from_string: INVALID STRING')
-            return
-
-        if string[0] == '+':
-            return v
-        elif string[0] == '-':
-            return -v
-        else:
-            print('Face3D._unit_vector_from_string: INVALID STRING')
-            return
 
     def _set_face_positions(self):
         # convert 2D centroid/vertices to 3D in the xy plane
@@ -313,6 +375,15 @@ class Face3D:
 
 
 class Polygons3D:
+    """
+    A 3D polygon, represented internally as a list of Face3D objects.
+
+    The rotate and translate methods allow the whole polygon to be rotated and translated as a whole.
+
+    A list of 3D faces can be specified on initialization, or an empty list can be passed at initialization and faces
+    can be added throuth the faces property.
+    """
+
     def __init__(self, faces: List[Face3D]):
         self._faces = [face.copy() for face in faces]
         self.solar_panel_faces = [face.copy() for face in faces if face.is_solar_panel]
@@ -352,21 +423,25 @@ class Polygons3D:
         for face in self.faces:
             face.translate(vector)
 
-    def __iadd__(self, other):
-        self._faces += [face.copy() for face in other.faces]
-
-
 class CubeSat(Polygons3D):
+    """
+    Inherits from Polygons3D but adds the following properties:
+     - center of mass           (numpy array of length 3)       [m]
+     - moment of inertia        (numpy array of shape (3, 3))   [kg m^2]
+     - magnetic moment          (numpy array of length 3)       [T]
+     - residual magnetic moment (numpy array of length 3)       [T]
+     - hysteresis rods          (list of HysteresisRod objects)
+    """
     def __init__(self, faces: List[Face3D], center_of_mass: np.ndarray, inertia: np.ndarray,
                  residual_magnetic_moment: np.ndarray = np.zeros(3), magnetic_moment: np.ndarray = np.zeros(3),
-                 hyst_rods: List[HysteresisRod] = []):
+                 hyst_rods: List[HysteresisRod] = None):
         self._com = center_of_mass
         self._inertia = inertia
         self._inertia_inv = np.linalg.inv(inertia)
         self._residual_magnetic_moment = residual_magnetic_moment
         self._magnetic_moment = magnetic_moment
         self._total_magnetic_moment = residual_magnetic_moment + magnetic_moment
-        self._hyst_rods = hyst_rods
+        self._hyst_rods = [] if hyst_rods is None else hyst_rods
         super().__init__(faces)
 
     @property
@@ -397,28 +472,3 @@ class CubeSat(Polygons3D):
     def total_magnetic_moment(self):
         return self._total_magnetic_moment
 
-
-if __name__ == '__main__':
-    from adcsim.CubeSat_model_examples import CubeSatEx1
-
-    cubesat = CubeSatEx1()
-    cubesat.plot()
-    plt.show()
-    exit()
-
-    big_square = Face2D(np.array([[-2., -2.], [2., -2.], [2., 2.], [-2., 2.], [-2., -2.]]).T)
-    little_square = Face2D(np.array([[-1., -1.], [1., -1.], [1., 1.], [-1., 1.], [-1., -1.]]).T)
-    square_with_hole = big_square - (little_square + np.array([0.5, 0.5]))
-
-    print(square_with_hole.area)
-    print(square_with_hole.centroid)
-
-    face_3d = Face3D(square_with_hole, orientation='+z-y', translation=np.array([0., 1., 2.]), color='g')
-    print(face_3d.area)
-    print(face_3d.centroid)
-    print(face_3d.normal)
-
-    poly_3d = Polygons3D([face_3d])
-
-    poly_3d.plot()
-    plt.show()
