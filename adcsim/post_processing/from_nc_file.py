@@ -6,9 +6,10 @@ import xarray as xr
 import numpy as np
 from adcsim.CubeSat_model_examples import CubeSatSolarPressureEx1
 from adcsim.animation import AnimateAttitude, DrawingVectors, AdditionalPlots
+import os
 
 # load data from the run
-data = xr.open_dataset('run8.nc')
+data = xr.open_dataset(os.path.join(os.path.dirname(__file__), '../../run0.nc'))
 time = np.arange(0, data.end_time, data.time_step)
 le = int(len(time)/data.save_every)
 
@@ -39,9 +40,9 @@ for i in range(le):
 _plot(mag_angles, 'angles between magnetic field and body frame', 'rad')
 
 # The Animation
-num = 20
-start = 1495000
-end = 1500000
+num = 200
+start = 0
+end = -1
 vec2 = DrawingVectors(data.sun.values[start:end:num], 'single', color='y', label='sun', length=0.5)
 vec3 = DrawingVectors(data.velocities.values[start:end:num], 'single', color='g', label='velocity', length=0.5)
 vec4 = DrawingVectors(data.mag.values[start:end:num], 'single', color='r', label='magnetic field', length=0.5)

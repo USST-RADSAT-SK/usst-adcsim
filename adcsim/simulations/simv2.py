@@ -1,39 +1,27 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from adcsim import disturbance_torques as dt, integrators as it, transformations as tr, util as ut, \
     state_propagations as st, integral_considerations as ic
-from skyfield.api import load, EarthSatellite, utc
-from astropy.coordinates import get_sun
-from astropy.time import Time
-import astropy.units as u
-from adcsim.CubeSat_model_examples import CubeSatSolarPressureEx1
+from skyfield.api import utc
+from adcsim.CubeSat_model_examples import CubeSatAerodynamicEx1
 from adcsim.hysteresis_rod import HysteresisRod
 from datetime import datetime, timedelta
-from adcsim.atmospheric_density import AirDensityModel
-from adcsim.magnetic_field_model import GeoMag
-from adcsim.animation import AnimateAttitudeInside, DrawingVectors, AdditionalPlots
 from tqdm import tqdm
 import xarray as xr
 from scipy.interpolate.interpolate import interp1d
+import os
 
 save_every = 10  # only save the data every number of iterations
 
 # declare time step for integration
 time_step = 0.01
-end_time = 1000
+end_time = 100
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
-rod1 = HysteresisRod(0.35, 0.73, 1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 0, 1.0]))
-rod2 = HysteresisRod(0.35, 0.73, 1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 1.0, 0]))
-cubesat = CubeSatSolarPressureEx1(inertia=np.diag([0.00309, 0.00417, 0.00363]), magnetic_moment=np.array([1.0, 0, 0]),
-                                  hyst_rods=[rod1, rod2])
-
-# create atmospheric density model
-air_density = AirDensityModel()
-
-# create magnetic field model
-geomag = GeoMag()
+rod1 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 0, 1.0]))
+rod2 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 1.0, 0]))
+cubesat = CubeSatAerodynamicEx1(inertia=np.diag([0.00309, 0.00417, 0.00363]), magnetic_moment=np.array([1.0, 0, 0]),
+                                hyst_rods=[rod1, rod2])
 
 # declare memory
 le = int(len(time)/save_every)
@@ -62,7 +50,7 @@ is_eclipse = np.zeros(le)
 hyst_rod = np.zeros((le, 3))
 
 # load saved data
-save_data = xr.open_dataset('saved_data.nc')
+save_data = xr.open_dataset(os.path.join(os.path.dirname(__file__), '../../saved_data.nc'))
 time_track = datetime(2019, 3, 24, 18, 35, 1, tzinfo=utc)
 final_time = time_track + timedelta(seconds=time_step*len(time))
 saved_data = save_data.sel(time=slice(None, final_time))
@@ -79,6 +67,7 @@ def interp_info(i):
     ac = interp_data(i)
     return ac[0: 3], ac[3: 6], ac[6], ac[7], ac[8], ac[9], ac[10: 13], ac[13: 16]
 
+
 # initialize attitude so that z direction of body frame is aligned with nadir
 sun_vec[0], mag_field[0], density[0], lons[0], lats[0], alts[0], positions[0], velocities[0] = interp_info(0)
 dcm0 = ut.initial_align_gravity_stabilization(positions[0], velocities[0])
@@ -92,7 +81,6 @@ dcm_on[0] = ut.inertial_to_orbit_frame(positions[0], velocities[0])
 dcm_bo[0] = dcm_bn[0] @ dcm_on[0].T
 
 # Put hysteresis rods in an initial state that is reasonable. (Otherwise you can get large magnetization from the rods)
-mag_field[0] = geomag.GeoMag(np.array([lats[0], lons[0], alts[0]]), time_track, output_format='inertial')
 mag_field_body[0] = (dcm_bn[0] @ mag_field[0]) * 10 ** -9  # in the body frame in units of T
 for rod in cubesat.hyst_rods:
     axes = np.argwhere(rod.axes_alignment == 1)[0][0]
@@ -142,8 +130,8 @@ for i in tqdm(range(len(time) - 1)):
         controls[k] = aerod[k] + solard[k] + gravityd[k] + magneticd[k] + hyst_rod[k]
 
         # calculate solar power
-        # if not is_eclipse[k]:
-        #     solar_power[k] = dt.solar_panel_power(sun_vec_body[k], sun_vec[k], positions[k], cubesat)
+        if not is_eclipse[k]:
+            solar_power[k] = dt.solar_panel_power(sun_vec_body[k], sun_vec[k], positions[k], cubesat)
 
         # propagate attitude state
         states[k+1] = it.rk4(st.state_dot_mrp, time_step, state, controls[k], cubesat.inertia, cubesat.inertia_inv)
@@ -225,7 +213,7 @@ if __name__ == "__main__":
                     'solar_power': ('time', solar_power)},
                    coords={'time': np.arange(0, le, 1), 'cord': ['x', 'y', 'z']},
                    attrs={'start_time': time_track.strftime('%Y/%m/%d %H:%M:%S'),
-                          'end_time': final_time.strftime('%Y/%m/%d %H:%M:%S'),
+                          'final_time': final_time.strftime('%Y/%m/%d %H:%M:%S'),
                           'time_step': time_step, 'save_every': save_every, 'end_time': end_time,
                           'Description': 'large rods and small mag'})
-    a.to_netcdf('run5.nc')
+    a.to_netcdf(os.path.join(os.path.dirname(__file__), '../../run0.nc'))

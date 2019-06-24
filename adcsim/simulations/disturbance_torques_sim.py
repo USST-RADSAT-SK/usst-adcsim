@@ -21,10 +21,8 @@ end_time = 300
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
-rod1 = HysteresisRod(0.4, 2.5, 12, volume=0.09*np.pi*(0.0005)**2, mass=0.001, integration_size=len(time),
-                     scale_factor=10**-2, axes_alignment=np.array([1.0, 0, 0]))
-rod2 = HysteresisRod(0.4, 2.5, 12, volume=0.09*np.pi*(0.0005)**2, mass=0.001, integration_size=len(time),
-                     scale_factor=10**-2, axes_alignment=np.array([0, 1.0, 0]))
+rod1 = HysteresisRod(0.4, 2.5, 12, volume=0.09*np.pi*(0.0005)**2, integration_size=len(time), axes_alignment=np.array([1.0, 0, 0]))
+rod2 = HysteresisRod(0.4, 2.5, 12, volume=0.09*np.pi*(0.0005)**2, integration_size=len(time), axes_alignment=np.array([0, 1.0, 0]))
 cubesat = CubeSatSolarPressureEx1(inertia=np.diag([3e-2, 5e-2, 8e-3]), magnetic_moment=np.array([0, 0, 1.0]),
                                   hyst_rods=[rod1, rod2])
 
