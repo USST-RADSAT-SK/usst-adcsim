@@ -9,7 +9,7 @@ from adcsim.animation import AnimateAttitude, DrawingVectors, AdditionalPlots
 import os
 
 # load data from the run
-data = xr.open_dataset(os.path.join(os.path.dirname(__file__), '../../run1.nc'))
+data = xr.open_dataset(os.path.join(os.path.dirname(__file__), '../../initial_examples/SNAP_reproduction.nc'))
 sim_params = eval(data.simulation_parameters)
 time = np.arange(0, sim_params['end_time_index'], sim_params['time_step'])
 le = int(len(time)/sim_params['save_every'])
@@ -41,7 +41,7 @@ for i in range(le):
 _plot(mag_angles, 'angles between magnetic field and body frame', 'rad')
 
 # The Animation
-num = 500
+num = 50
 start = 0
 end = -1
 vec2 = DrawingVectors(data.sun.values[start:end:num], 'single', color='y', label='sun', length=0.5)
