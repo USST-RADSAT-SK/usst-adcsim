@@ -10,18 +10,17 @@ import xarray as xr
 from scipy.interpolate.interpolate import interp1d
 import os
 
-save_every = 10  # only save the data every number of iterations
+save_every = 1  # only save the data every number of iterations
 
 # declare time step for integration
 time_step = 0.01
-end_time = 6000
+end_time = 200
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
 rod1 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 0, 1.0]))
 rod2 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 1.0, 0]))
-cubesat = CubeSatModel(inertia=np.diag([0.00309, 0.00417, 0.00363]), magnetic_moment=np.array([1.0, 0, 0]),
-                       hyst_rods=[rod1, rod2])
+cubesat = CubeSatModel(inertia=np.diag([0.1, 0.06, 0.003]), magnetic_moment=np.array([0, 0, 5.0]))
 
 # declare memory
 le = int(len(time)/save_every)
@@ -72,8 +71,7 @@ def interp_info(i):
 sun_vec[0], mag_field[0], density[0], lons[0], lats[0], alts[0], positions[0], velocities[0] = interp_info(0)
 dcm0 = ut.initial_align_gravity_stabilization(positions[0], velocities[0])
 sigma0 = tr.dcm_to_mrp(dcm0)
-# initialize angular velocity so that it is approximately the speed of rotation around the earth
-omega0_body = np.array([0, 5*np.pi/180, 0])
+omega0_body = np.array([0, -(360/(90*60))*np.pi/180, 0])
 omega0 = dcm0.T @ omega0_body
 states[0] = state = [sigma0, omega0]
 dcm_bn[0] = tr.mrp_to_dcm(states[0][0])
@@ -214,6 +212,7 @@ if __name__ == "__main__":
                     'dcm_bo': (['time', 'dcm_mat_dim1', 'dcm_mat_dim2'], dcm_bo),
                     'angular_vel': (['time', 'cord'], omegas),
                     'controls': (['time', 'cord'], controls),
+                    'nadir': (['time', 'cord'], nadir),
                     'solar_power': ('time', solar_power)},
                    coords={'time': np.arange(0, le, 1), 'cord': ['x', 'y', 'z']},
                    attrs={'simulation_parameters': str(sim_params_dict), 'cubesat_parameters': str(cubesat.asdict()),
@@ -221,4 +220,4 @@ if __name__ == "__main__":
                                          '(they call it SNAP) recreation'})
     # Note: the simulation and cubesat parameter dictionaries are saved as strings for the nc file. If you wish
     # you could just eval(a.cubesat_parameters) to get the dictionary back.
-    a.to_netcdf(os.path.join(os.path.dirname(__file__), '../../run0.nc'))
+    a.to_netcdf(os.path.join(os.path.dirname(__file__), '../../run1.nc'))
