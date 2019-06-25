@@ -9,7 +9,7 @@ from adcsim.animation import AnimateAttitude, DrawingVectors, AdditionalPlots
 import os
 
 # load data from the run
-data = xr.open_dataset(os.path.join(os.path.dirname(__file__), '../../initial_examples/SNAP_reproduction.nc'))
+data = xr.open_dataset(os.path.join(os.path.dirname(__file__), '../../run0.nc'))
 sim_params = eval(data.simulation_parameters)
 time = np.arange(0, sim_params['end_time_index'], sim_params['time_step'])
 le = int(len(time)/sim_params['save_every'])

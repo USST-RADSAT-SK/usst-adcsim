@@ -224,4 +224,4 @@ if __name__ == "__main__":
                                          '(they call it SNAP) recreation'})
     # Note: the simulation and cubesat parameter dictionaries are saved as strings for the nc file. If you wish
     # you could just eval(a.cubesat_parameters) to get the dictionary back.
-    a.to_netcdf(os.path.join(os.path.dirname(__file__), '../../run1.nc'))
+    a.to_netcdf(os.path.join(os.path.dirname(__file__), '../../run0.nc'))
