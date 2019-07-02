@@ -24,7 +24,7 @@ cubesat = CubeSatModel(inertia=np.diag([0.1, 0.06, 0.003]), magnetic_moment=np.a
                        hyst_rods=[rod1, rod2])
 
 # declare memory
-le = int(len(time)/save_every)
+le = int(len(time)/save_every) - 1
 states = np.zeros((le+1, 2, 3))
 dcm_bn = np.zeros((le, 3, 3))
 dcm_on = np.zeros((le, 3, 3))
