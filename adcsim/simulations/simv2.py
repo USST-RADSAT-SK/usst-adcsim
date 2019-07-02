@@ -20,7 +20,8 @@ time = np.arange(0, end_time, time_step)
 # create the CubeSat model
 rod1 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 0, 1.0]))
 rod2 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 1.0, 0]))
-cubesat = CubeSatModel(inertia=np.diag([0.1, 0.06, 0.003]), magnetic_moment=np.array([0, 0, 5.0]))
+cubesat = CubeSatModel(inertia=np.diag([0.1, 0.06, 0.003]), magnetic_moment=np.array([0, 0, 5.0]),
+                       hyst_rods=[rod1, rod2])
 
 # declare memory
 le = int(len(time)/save_every)
