@@ -10,11 +10,11 @@ import xarray as xr
 from scipy.interpolate.interpolate import interp1d
 import os
 
-save_every = 1  # only save the data every number of iterations
+save_every = 10  # only save the data every number of iterations
 
 # declare time step for integration
 time_step = 0.01
-end_time = 200
+end_time = 50
 time = np.arange(0, end_time, time_step)
 
 # create the CubeSat model
@@ -24,7 +24,7 @@ cubesat = CubeSatModel(inertia=np.diag([0.1, 0.06, 0.003]), magnetic_moment=np.a
                        hyst_rods=[rod1, rod2])
 
 # declare memory
-le = int(len(time)/save_every) - 1
+le = int(len(time)/save_every)
 states = np.zeros((le+1, 2, 3))
 dcm_bn = np.zeros((le, 3, 3))
 dcm_on = np.zeros((le, 3, 3))
@@ -226,3 +226,6 @@ if __name__ == "__main__":
     # Note: the simulation and cubesat parameter dictionaries are saved as strings for the nc file. If you wish
     # you could just eval(a.cubesat_parameters) to get the dictionary back.
     a.to_netcdf(os.path.join(os.path.dirname(__file__), '../../run0.nc'))
+
+    from adcsim.dcm_convert.dcm_to_stk import xdcm_to_stk
+    xdcm_to_stk(time[::save_every], dcm_bn, "run0.a")
