@@ -89,7 +89,6 @@ class CubeSatModel(CubeSat):
         body_small_panel = Face2D(np.array([[-0.05, -0.05], [0.05, -0.05], [0.05, 0.05], [-0.05, 0.05], [-0.05, -0.05]]).T, diff_ref_coeff=1.0, spec_ref_coeff=0.0)
         body_small_panel -= solar_panel_up + np.array([0., 0.026])
         body_small_panel -= solar_panel_dn - np.array([0., 0.026])
-
         body_small = [
             Face3D(body_small_panel, color=[0.5, 0.5, 0.5]),
             Face3D(solar_panel_up, translation=np.array([0., 0.026, 0.])),
@@ -109,7 +108,16 @@ class CubeSatModel(CubeSat):
             Face3D(solar_panel_dn, translation=np.array([0., -0.080, 0.]))
         ]
 
-        body_panel_px = Polygons3D(body_large)
+        body_large_panel_px = Face2D(np.array([[-0.05, -0.108], [0.05, -0.108], [0.05, 0.108], [-0.05, 0.108], [-0.05, -0.108]]).T, diff_ref_coeff=1.0, spec_ref_coeff=0.0)
+        body_large_panel_px -= solar_panel_up + np.array([0., 0.080])
+        body_large_panel_px -= solar_panel_dn + np.array([0., 0.028])
+        body_large_px = [
+            Face3D(body_large_panel_px, color=[0.5, 0.5, 0.5]),
+            Face3D(solar_panel_up, translation=np.array([0., 0.080, 0.])),
+            Face3D(solar_panel_dn, translation=np.array([0., 0.028, 0.]))
+        ]
+
+        body_panel_px = Polygons3D(body_large_px)
         body_panel_px.rotate(axis='+y+z')
         body_panel_px.translate(np.array([0.05, 0., 0.]))
 

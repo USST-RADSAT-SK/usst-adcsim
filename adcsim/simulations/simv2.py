@@ -227,5 +227,5 @@ if __name__ == "__main__":
     # you could just eval(a.cubesat_parameters) to get the dictionary back.
     a.to_netcdf(os.path.join(os.path.dirname(__file__), '../../run0.nc'))
 
-    from adcsim.dcm_convert.dcm_to_stk import xdcm_to_stk
-    xdcm_to_stk(time[::save_every], dcm_bn, "run0.a")
+    from adcsim.dcm_convert.dcm_to_stk import dcm_to_stk_simple
+    dcm_to_stk_simple(time[::save_every], dcm_bn, "run0.a")

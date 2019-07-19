@@ -23,8 +23,8 @@ def dcm_to_stk_simple(t_time, dcm, outfile):
     BlockingFactor = 20
     InterpolationOrder = 1
     CentralBody = "Earth"
-    ScenarioEpoch = "1 Jan 2019 18:00:00.000000"
-    CoordinateAxes = "Fixed"
+    ScenarioEpoch = "24 Mar 2019 18:35:01.000000"
+    CoordinateAxes = "ICRF"
     format = 'AttitudeTimeQuaternions'
 
     meta_lines = [
@@ -45,7 +45,7 @@ def dcm_to_stk_simple(t_time, dcm, outfile):
     out = np.zeros((len(t_time), 5))
     for i, dcm_line in enumerate(dcm):
         quat = dcm_to_quaternions(dcm_line)
-        out[i] = [t_time[i], quat[0], quat[1], quat[2], quat[3]]
+        out[i] = [t_time[i], quat[1], quat[2], quat[3], quat[0]]  # note: STK puts the scalar quaternion last, not first
 
     np.savetxt(outfile, out, fmt='%.16e', comments='', header=header, footer=footer)
 
@@ -65,8 +65,8 @@ def xdcm_to_stk(t_time, dcm, outfile):  # convert dcm using xarray conversions
                              "BlockingFactor": 20,
                              "InterpolationOrder": 1,
                              "CentralBody": "Earth",
-                             "ScenarioEpoch": "1 Jan 2019 18:00:00.000000",
-                             "CoordinateAxes": "Fixed",
+                             "ScenarioEpoch": "24 Mar 2019 18:35:01.000000",
+                             "CoordinateAxes": "ICRF",
                              "format": "AttitudeTimeQuaternions"}
                        )
 
