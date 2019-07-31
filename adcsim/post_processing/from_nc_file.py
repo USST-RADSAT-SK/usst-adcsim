@@ -4,21 +4,25 @@ Chunks of code that can be used for post processing of data after it is saved to
 import matplotlib.pyplot as plt
 import xarray as xr
 import numpy as np
+from adcsim.CubeSat_model import CubeSat
 from adcsim.CubeSat_model_examples import CubeSatModel
 from adcsim.hysteresis_rod import HysteresisRod
 from adcsim.animation import AnimateAttitude, DrawingVectors, AdditionalPlots
 import os
 
 # load data from the run
-data = xr.open_dataset(os.path.join(os.path.dirname(__file__), '../../run3.nc'))
+data = xr.open_dataset(os.path.join(os.path.dirname(__file__), '../../run0.nc'))
 sim_params = eval(data.simulation_parameters)
 time = np.arange(0, sim_params['end_time_index'], sim_params['time_step'])
 le = int(len(time)/sim_params['save_every'])
 time = time[::sim_params['save_every']]
 
-# declare a CubeSat (This is only for animations, the cubesat does not need to match the one used in the run,
-# you may want it to look the same tho)
-cubesat = CubeSatModel()
+# load the cubesat
+try:
+    cubesat = CubeSat.fromdict(data.cubesat_parameters)
+except:  # if people are using old simulation .nc files then the above line may not work for them
+    cubesat = CubeSatModel()
+
 
 # can now recreate the rods easily
 rods = HysteresisRod.from_cubesat_parameters_data(data.cubesat_parameters, data.hyst_rod_external_field, data.hyst_rod_magnetization)

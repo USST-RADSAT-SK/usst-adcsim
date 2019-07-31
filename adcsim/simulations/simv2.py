@@ -10,7 +10,7 @@ import xarray as xr
 from scipy.interpolate.interpolate import interp1d
 import os
 
-save_every = 1  # only save the data every number of iterations
+save_every = 10  # only save the data every number of iterations
 
 # declare time step for integration
 time_step = 0.01

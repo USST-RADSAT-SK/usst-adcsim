@@ -37,6 +37,10 @@ class HysteresisRod:
             a[-1].b = b_rods.values[:, i]
         return a
 
+    @classmethod
+    def fromdict(cls, data_dict):
+        return cls(data_dict['br'], data_dict['bs'], data_dict['hc'], data_dict['volume'], data_dict['axes_alignment'])
+
     def asdict(self):
         return {'br': self.br, 'bs': self.bs, 'hc': self.hc, 'volume': self.volume,
                 'axes_alignment': self.axes_alignment.tolist()}
@@ -120,7 +124,6 @@ class HysteresisRod:
         plt.ylabel('B')
         if plot_magnetization:
             plt.plot(self.h, self.b, color='red', linestyle='--')
-
 
     def plot_limiting_cycle_derivative(self, hmin, hmax):
         import matplotlib.pyplot as plt

@@ -45,17 +45,13 @@ class Face2D:
     The surface properties are called by functions that calculate aerodynamic disturbance torques, solar pressure
     disturbance torques, or solar power.
     """
-    def __init__(self, vertices: np.ndarray, sigma_n: float=0.8, sigma_t: float=0.8, spec_ref_coeff: float=0.6,
-                 diff_ref_coeff: float=0.0, accommodation_coeff: float=0.9, solar_power_efficiency: float=None):
+    def __init__(self, vertices: np.ndarray, spec_ref_coeff: float=0.6, diff_ref_coeff: float=0.0,
+                 accommodation_coeff: float=0.9, solar_power_efficiency: float=None):
         """
         Parameters
         ----------
         vertices : np.ndarray
             List of 2D vertices, shape (2, n) - see class docstring for ordering.
-        sigma_n : float
-            Normal momentum exchange coefficient, used to compute the aerodynamic force on a surface.
-        sigma_t : float
-            Tangential momentum exchange coefficient, used to compute the aerodynamic force on a surface.
         spec_ref_coeff : float
             Specular reflectance coefficient
         diff_ref_coeff : float
@@ -73,8 +69,6 @@ class Face2D:
         self._area = self._polygon_area(vertices)
         self._centroid = self._polygon_centroid(vertices)
 
-        self._sigma_n = sigma_n
-        self._sigma_t = sigma_t
         self._spec_ref_coeff = spec_ref_coeff
         self._diff_ref_coeff = diff_ref_coeff
         self._accommodation_coeff = accommodation_coeff
@@ -85,13 +79,16 @@ class Face2D:
             self.is_solar_panel = False
 
         self._kwargs = dict(
-            sigma_n=sigma_n,
-            sigma_t=sigma_t,
             spec_ref_coeff=spec_ref_coeff,
             diff_ref_coeff=diff_ref_coeff,
             accommodation_coeff=accommodation_coeff,
             solar_power_efficiency=solar_power_efficiency
         )
+
+    @classmethod
+    def fromdict(cls, data_dict):
+        return cls(np.array(data_dict['vertices']), data_dict['spec_ref_coeff'], data_dict['diff_ref_coeff'],
+                   data_dict['accommodation_coeff'], data_dict['solar_power_efficiency'])
 
     @property
     def vertices(self):
@@ -108,14 +105,6 @@ class Face2D:
     @property
     def centroid(self):
         return self._centroid
-
-    @property
-    def sigma_n(self):
-        return self._sigma_n
-
-    @property
-    def sigma_t(self):
-        return self._sigma_t
 
     @property
     def accommodation_coeff(self):
@@ -198,6 +187,19 @@ class Face2D:
             cy += (v[1, i] + v[1, i + 1]) * (v[0, i] * v[1, i + 1] - v[0, i + 1] * v[1, i])
         return np.array([cx, cy]) / (6 * Face2D._polygon_area(v))
 
+    def asdict(self):
+        return {
+            'vertices': self.vertices.tolist(),
+            'spec_ref_coeff':self.spec_ref_coeff,
+            'solar_power_efficiency': self.solar_power_efficiency,
+            'is_solar_panel': self.is_solar_panel,
+            'diff_ref_coeff': self.diff_ref_coeff,
+            'centroid': self.centroid.tolist(),
+            'accommodation_coeff': self.accommodation_coeff,
+            'area': self.area,
+            'num_vertices': self.num_vertices
+        }
+
 
 class Face3D:
     """
@@ -238,6 +240,11 @@ class Face3D:
 
         self._name = name
         self._color = color
+
+    @classmethod
+    def fromdict(cls, data_dict):
+        return cls(Face2D.fromdict(data_dict['face']), np.array(data_dict['orientation']),
+                   np.array(data_dict['translation']), data_dict['name'], data_dict['color'])
 
     @property
     def vertices(self):
@@ -297,14 +304,6 @@ class Face3D:
         return self._color
 
     @property
-    def sigma_n(self):
-        return self.face.sigma_n
-
-    @property
-    def sigma_t(self):
-        return self.face.sigma_t
-
-    @property
     def accommodation_coeff(self):
         return self.face.accommodation_coeff
 
@@ -349,6 +348,15 @@ class Face3D:
     def copy(self):
         return Face3D(face=self.face.copy(), orientation=self.orientation.copy(), translation=self.translation.copy(),
                       name=self.name, color=self.color)
+
+    def asdict(self):
+        return {
+            'name': self.name,
+            'face': self.face.asdict(),
+            'color': self.color,
+            'translation': self.translation.tolist(),
+            'orientation': self.orientation.tolist()
+        }
 
     def _unit_vector_from_string(self, string):
         if string in self._unit_vectors:
@@ -445,6 +453,15 @@ class CubeSat(Polygons3D):
         self._hyst_rods = [] if hyst_rods is None else hyst_rods
         super().__init__(faces)
 
+    @classmethod
+    def fromdict(cls, data_dict):
+        if isinstance(data_dict, str):
+            data_dict = eval(data_dict)
+        faces = [Face3D.fromdict(data_dict['faces'][i]) for i in range(len(data_dict['faces']))]
+        hyst_rods = [HysteresisRod.fromdict(data_dict['hyst_rods'][i]) for i in range(len(data_dict['hyst_rods']))]
+        return cls(faces, data_dict['center_of_mass'], data_dict['inertia'], data_dict['residual_magnetic_moment'],
+                   data_dict['magnetic_moment'], hyst_rods)
+
     @property
     def center_of_mass(self):
         return self._com
@@ -474,15 +491,23 @@ class CubeSat(Polygons3D):
         return self._total_magnetic_moment
 
     def asdict(self):
-        d = {'center_of_mass': self.center_of_mass.tolist(), 'inertia': self.inertia.tolist(),
-             'residual_magnetic_moment': self.residual_magnetic_moment.tolist(),
-             'magnetic_moment': self.magnetic_moment.tolist(),
-             'total_magnetic_moment': self.total_magnetic_moment.tolist()}
+        d = {
+            'center_of_mass': self.center_of_mass.tolist(),
+            'inertia': self.inertia.tolist(),
+            'residual_magnetic_moment': self.residual_magnetic_moment.tolist(),
+            'magnetic_moment': self.magnetic_moment.tolist(),
+            'total_magnetic_moment': self.total_magnetic_moment.tolist()
+        }
 
         a = []
         for rod in self.hyst_rods:
             a.append(rod.asdict())
         d['hyst_rods'] = a
+
+        a = []
+        for face in self.faces:
+            a.append(face.asdict())
+        d['faces'] = a
 
         return d
 
