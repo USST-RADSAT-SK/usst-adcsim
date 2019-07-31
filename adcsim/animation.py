@@ -64,11 +64,12 @@ class DrawingVectors:
 
 class AdditionalPlots:
     def __init__(self, xdata: np.ndarray, ydata: np.ndarray, labels: Union[List[str], str] = ('X', 'Y', 'Z'),
-                 title='NA', xlabel='time', ylabel='NA', groundtrack=False):
+                 title='NA', xlabel='time', ylabel='NA', groundtrack=False, hyst_curve=None):
         self.xdata = xdata
         self.ydata = ydata
         self.labels = labels
         self.groundtrack = groundtrack
+        self.hyst_curve = hyst_curve
 
         if groundtrack:
             self.title = ''
@@ -79,6 +80,16 @@ class AdditionalPlots:
             self.ymin = -85
             self.ymax = 85
             self.projection = ccrs.PlateCarree()
+        elif hyst_curve is not None:
+            self.title = 'hyst rod magnetization'
+            self.xlabel = 'H'
+            self.ylabel = 'B'
+            self.hmax = hyst_curve.hc * 8
+            self.hmin = -self.hmax
+            self.h = np.linspace(self.hmin, self.hmax, 1000)
+            self.top_curve = hyst_curve.b_field_top(self.h)
+            self.bottom_curve = hyst_curve.b_field_bottom(self.h)
+            self.projection = None
         else:
             self.title = title
             self.xlabel = xlabel
@@ -202,6 +213,25 @@ class AnimateAttitude:
         plt.gca().legend(ap.labels)
 
     @staticmethod
+    def _plot_hyst_rod(ax, i, ap):
+        # ax.set_xlim(ap.hmin, ap.hmax)
+        # ax.set_ylim(-ap.hyst_curve.bs, ap.hyst_curve.bs)
+        ax.plot(ap.h, ap.top_curve, 'C0')
+        ax.plot(ap.h, ap.bottom_curve, 'C0')
+        ax.plot(ap.xdata[:i + 1], ap.ydata[:i + 1], 'r.')
+        ax.axvline(x=0, color='k')
+        ax.axhline(y=0, color='k')
+        ax.axvline(x=ap.hyst_curve.hc, color='r', ls='dashed', alpha=0.3)
+        ax.axvline(x=-ap.hyst_curve.hc, color='r', ls='dashed', alpha=0.3)
+        ax.axhline(y=ap.hyst_curve.br, color='r', ls='dashed', alpha=0.3)
+        ax.axhline(y=-ap.hyst_curve.br, color='r', ls='dashed', alpha=0.3)
+        ax.axhline(y=ap.hyst_curve.bs, color='r', ls='dashed', alpha=0.3)
+        ax.axhline(y=-ap.hyst_curve.bs, color='r', ls='dashed', alpha=0.3)
+        ax.set_title(ap.title)
+        ax.set_ylabel(ap.ylabel)
+        ax.set_xlabel(ap.xlabel)
+
+    @staticmethod
     def _plot_ground_track(ax, i, ap):
         ax.coastlines()
         ax.set_xlim(ap.xmin, ap.xmax)
@@ -230,6 +260,8 @@ class AnimateAttitude:
                 ax = fig.add_subplot(n, 2, 2*(j+1), projection=ap.projection)
                 if ap.groundtrack:
                     self._plot_ground_track(ax, i, ap)
+                elif ap.hyst_curve is not None:
+                    self._plot_hyst_rod(ax, i, ap)
                 else:
                     self._plot(ax, i, ap)
             plt.pause(0.01)

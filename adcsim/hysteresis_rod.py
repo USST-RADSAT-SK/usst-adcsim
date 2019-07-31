@@ -28,6 +28,15 @@ class HysteresisRod:
         else:
             self.b = self.h = None
 
+    @classmethod
+    def from_cubesat_parameters_data(cls, data_dict, h_rods, b_rods):
+        a = []
+        for i, b in enumerate(eval(data_dict)['hyst_rods']):
+            a.append(cls(b['br'], b['bs'], b['hc'], b['volume'], b['axes_alignment']))
+            a[-1].h = h_rods.values[:, i]
+            a[-1].b = b_rods.values[:, i]
+        return a
+
     def asdict(self):
         return {'br': self.br, 'bs': self.bs, 'hc': self.hc, 'volume': self.volume,
                 'axes_alignment': self.axes_alignment.tolist()}
@@ -76,19 +85,22 @@ class HysteresisRod:
         :param i: index of the integration
         :return: None
         """
-        self.h[i+1] = h
-        step = self.h[i+1] - self.h[i]
-        if self.h[i+1] >= self.h[i]:
-            self.b[i+1] = rk4_general(self.mag_process_positive_h, step, self.h[i+1], self.b[i])
-            # self.b[i+1] = self.b[i] + self.mag_process_positive_h(self.h[i+1], self.b[i]) * step
+        self.h_current, self.h_previous = h, self.h_current
+        self.b_previous = self.b_current
+        step = self.h_current - self.h_previous
+        if self.h_current >= self.h_previous:
+            self.b_current = rk4_general(self.mag_process_positive_h, step, self.h_current, self.b_previous)
+            # This is the rk4 version of simple euler method:
+            # self.b_current = self.b_previous + self.mag_process_positive_h(self.h_current, self.b_previous) * step
         else:
-            self.b[i+1] = rk4_general(self.mag_process_negative_h, step, self.h[i+1], self.b[i])
-            # self.b[i+1] = self.b[i] + self.mag_process_negative_h(self.h[i+1], self.b[i]) * step
-        self.h_current = h
-        self.b_current = self.b[i+1]
+            self.b_current = rk4_general(self.mag_process_negative_h, step, self.h_current, self.b_previous)
+        self.h[i+1] = self.h_current
+        self.b[i+1] = self.b_current
 
-    def plot_limiting_cycle(self, hmin, hmax):
+    def plot_limiting_cycle(self, plot_magnetization=True):
         import matplotlib.pyplot as plt
+        hmax = self.hc * 8
+        hmin = -hmax
         plt.figure()
         h = np.linspace(hmin, hmax, 1000)
         top = self.b_field_top(h)
@@ -106,6 +118,9 @@ class HysteresisRod:
         plt.title('Limiting Hysteresis Cycle')
         plt.xlabel('H')
         plt.ylabel('B')
+        if plot_magnetization:
+            plt.plot(self.h, self.b, color='red', linestyle='--')
+
 
     def plot_limiting_cycle_derivative(self, hmin, hmax):
         import matplotlib.pyplot as plt
@@ -162,6 +177,6 @@ if __name__ == "__main__":
         hyst_rod.propagate_and_save_magnetization(h[i+1], i)
 
     # plt.figure()
-    hyst_rod.plot_limiting_cycle(-600, 600)
+    hyst_rod.plot_limiting_cycle()
     plt.plot(hyst_rod.h, hyst_rod.b, color='red', linestyle='--')
     plt.show()

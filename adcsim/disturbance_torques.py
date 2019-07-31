@@ -191,10 +191,10 @@ def hysteresis_rod_torque_save(b, i, cubesat: CubeSat):
     :return:
     """
     h = b/u0
-    torque = 0
+    torque = np.zeros((len(cubesat.hyst_rods), 3))
 
     # for each hysteresis rod
-    for rod in cubesat.hyst_rods:
+    for j, rod in enumerate(cubesat.hyst_rods):
 
         # propagate the magnetic field of the rod
         h_proj = h @ rod.axes_alignment  # calculate component of h along axis of hysteresis rod
@@ -204,7 +204,7 @@ def hysteresis_rod_torque_save(b, i, cubesat: CubeSat):
         m = rod.axes_alignment * rod.b[i] * rod.volume / u0
 
         # calculate m x B torque
-        torque += ut.cross_product_operator(m) @ b
+        torque[j] = ut.cross_product_operator(m) @ b
 
     return torque
 

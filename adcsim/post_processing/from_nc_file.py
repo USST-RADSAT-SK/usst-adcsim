@@ -5,23 +5,30 @@ import matplotlib.pyplot as plt
 import xarray as xr
 import numpy as np
 from adcsim.CubeSat_model_examples import CubeSatModel
+from adcsim.hysteresis_rod import HysteresisRod
 from adcsim.animation import AnimateAttitude, DrawingVectors, AdditionalPlots
 import os
 
 # load data from the run
-data = xr.open_dataset(os.path.join(os.path.dirname(__file__), '../../run0.nc'))
+data = xr.open_dataset(os.path.join(os.path.dirname(__file__), '../../run3.nc'))
 sim_params = eval(data.simulation_parameters)
 time = np.arange(0, sim_params['end_time_index'], sim_params['time_step'])
 le = int(len(time)/sim_params['save_every'])
+time = time[::sim_params['save_every']]
 
 # declare a CubeSat (This is only for animations, the cubesat does not need to match the one used in the run,
 # you may want it to look the same tho)
 cubesat = CubeSatModel()
 
+# can now recreate the rods easily
+rods = HysteresisRod.from_cubesat_parameters_data(data.cubesat_parameters, data.hyst_rod_external_field, data.hyst_rod_magnetization)
+for rod in rods:
+    rod.plot_limiting_cycle()
+
 
 def _plot(datas, title='', ylabel=''):
     plt.figure()
-    plt.plot(time[::sim_params['save_every']], datas)
+    plt.plot(time, datas)
     plt.title(title)
     plt.xlabel('Time (s)')
     plt.ylabel(ylabel)
@@ -54,7 +61,8 @@ ref2 = DrawingVectors(data.dcm_bo.values[start:end:num], 'axes', color=['C0', 'C
                       length=0.2)
 plot1 = AdditionalPlots(time[start:end:num], data.controls.values[start:end:num], labels=['X', 'Y', 'Z'])
 plot2 = AdditionalPlots(data.lons.values[start:end:num], data.lats.values[start:end:num], groundtrack=True)
-a = AnimateAttitude(data.dcm_bn.values[start:end:num], draw_vector=[ref1, vec4, vec1], additional_plots=plot2,
+plot3 = AdditionalPlots(data.hyst_rod_external_field.values[:, 1][start:end:num], data.hyst_rod_magnetization.values[:, 1][start:end:num], hyst_curve=rods[1])
+a = AnimateAttitude(data.dcm_bn.values[start:end:num], draw_vector=[ref1, vec4, vec1], additional_plots=[plot2, plot3],
                     cubesat_model=cubesat)
 a.animate_and_plot()
 

@@ -10,21 +10,23 @@ import xarray as xr
 from scipy.interpolate.interpolate import interp1d
 import os
 
-save_every = 10  # only save the data every number of iterations
+save_every = 1  # only save the data every number of iterations
 
 # declare time step for integration
 time_step = 0.01
 end_time = 50
 time = np.arange(0, end_time, time_step)
+le = int(len(time)/save_every)
 
 # create the CubeSat model
-rod1 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 0, 1.0]))
-rod2 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 1.0, 0]))
-cubesat = CubeSatModel(inertia=np.diag([0.1, 0.06, 0.003]), magnetic_moment=np.array([0, 0, 5.0]),
+rod1 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075/(100**3), axes_alignment=np.array([1.0, 0, 0]),
+                     integration_size=le+1)
+rod2 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 1.0, 0]),
+                     integration_size=le+1)
+cubesat = CubeSatModel(inertia=np.diag([0.1, 0.06, 0.003]), magnetic_moment=np.array([0, 0, 1.5]),
                        hyst_rods=[rod1, rod2])
 
 # declare memory
-le = int(len(time)/save_every)
 states = np.zeros((le+1, 2, 3))
 dcm_bn = np.zeros((le, 3, 3))
 dcm_on = np.zeros((le, 3, 3))
@@ -47,7 +49,9 @@ mag_field = np.zeros((le, 3))
 mag_field_body = np.zeros((le, 3))
 solar_power = np.zeros(le)
 is_eclipse = np.zeros(le)
-hyst_rod = np.zeros((le, 3))
+hyst_rod = np.zeros((le, len(cubesat.hyst_rods), 3))
+h_rods = np.zeros((le, len(cubesat.hyst_rods)))
+b_rods = np.zeros((le, len(cubesat.hyst_rods)))
 
 # load saved data
 saved_data = xr.open_dataset(os.path.join(os.path.dirname(__file__), '../../orbit_pre_process.nc'))
@@ -83,8 +87,8 @@ dcm_bo[0] = dcm_bn[0] @ dcm_on[0].T
 mag_field_body[0] = (dcm_bn[0] @ mag_field[0]) * 10 ** -9  # in the body frame in units of T
 for rod in cubesat.hyst_rods:
     axes = np.argwhere(rod.axes_alignment == 1)[0][0]
-    rod.h_current = mag_field_body[0][axes]/cubesat.hyst_rods[0].u0
-    rod.b_current = rod.b_field_bottom(rod.h_current)
+    rod.h[0] = rod.h_current = mag_field_body[0][axes]/cubesat.hyst_rods[0].u0
+    rod.b[0] = rod.b_current = rod.b_field_bottom(rod.h_current)
 
 # the integration
 k = 0
@@ -125,8 +129,8 @@ for i in tqdm(range(len(time) - 1)):
             solard[k] = dt.solar_pressure(sun_vec_body[k], sun_vec[k], positions[k], cubesat)
         gravityd[k] = dt.gravity_gradient(ue, R0, cubesat)
         magneticd[k] = dt.total_magnetic(mag_field_body[k], cubesat)
-        hyst_rod[k] = dt.hysteresis_rod_torque(mag_field_body[k], cubesat)
-        controls[k] = aerod[k] + solard[k] + gravityd[k] + magneticd[k] + hyst_rod[k]
+        hyst_rod[k] = dt.hysteresis_rod_torque_save(mag_field_body[k], k, cubesat)
+        controls[k] = aerod[k] + solard[k] + gravityd[k] + magneticd[k] + hyst_rod[k].sum(axis=0)
 
         # calculate solar power
         if not is_eclipse[k]:
@@ -191,6 +195,9 @@ for i in tqdm(range(len(time) - 1)):
         # do 'tidy' up things at the end of integration (needed for many types of attitude coordinates)
         state = ic.mrp_switching(state)
 states = np.delete(states, 1, axis=0)
+for i, rod in enumerate(cubesat.hyst_rods):
+    b_rods[:, i] = rod.b = np.delete(rod.b, 1, axis=0)
+    h_rods[:, i] = rod.h = np.delete(rod.h, 1, axis=0)
 
 if __name__ == "__main__":
     omegas = states[:, 1]
@@ -217,9 +224,12 @@ if __name__ == "__main__":
                     'aero_torque': (['time', 'cord'], aerod),
                     'solar_torque': (['time', 'cord'], solard),
                     'magnetic_torque': (['time', 'cord'], magneticd),
+                    'hyst_rod_torque': (['time', 'hyst_rod', 'cord'], hyst_rod),
+                    'hyst_rod_magnetization': (['time', 'hyst_rod'], b_rods),
+                    'hyst_rod_external_field': (['time', 'hyst_rod'], h_rods),
                     'nadir': (['time', 'cord'], nadir),
                     'solar_power': ('time', solar_power)},
-                   coords={'time': np.arange(0, le, 1), 'cord': ['x', 'y', 'z']},
+                   coords={'time': np.arange(0, le, 1), 'cord': ['x', 'y', 'z'], 'hyst_rod': [f'rod{i}' for i in range(len(cubesat.hyst_rods))]},
                    attrs={'simulation_parameters': str(sim_params_dict), 'cubesat_parameters': str(cubesat.asdict()),
                           'description': 'University of kentucky attitude propagator software '
                                          '(they call it SNAP) recreation'})
