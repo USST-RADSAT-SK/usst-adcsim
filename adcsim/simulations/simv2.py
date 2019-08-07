@@ -23,7 +23,7 @@ rod1 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075/(100**3), axes_alig
                      integration_size=le+1)
 rod2 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 1.0, 0]),
                      integration_size=le+1)
-cubesat = CubeSatModel(inertia=np.diag([0.1, 0.06, 0.003]), magnetic_moment=np.array([0, 0, 1.5]),
+cubesat = CubeSatModel(inertia=np.diag([8*(10**-3), 8*(10**-3), 2*(10**-3)]), magnetic_moment=np.array([0, 0, 1.5]),
                        hyst_rods=[rod1, rod2])
 
 # declare memory
@@ -206,7 +206,7 @@ if __name__ == "__main__":
     # save the data
     sim_params_dict = {'time_step': time_step, 'save_every': save_every, 'end_time_index': end_time,
                        'start_time': start_time.strftime('%Y/%m/%d %H:%M:%S'),
-                       'final_time': final_time.strftime('%Y/%m/%d %H:%M:%S'), 'omega0': omega0.tolist(),
+                       'final_time': final_time.strftime('%Y/%m/%d %H:%M:%S'), 'omega0_body': omega0_body.tolist(),
                        'sigma0': sigma0.tolist()}
     a = xr.Dataset({'sun': (['time', 'cord'], sun_vec),
                     'mag': (['time', 'cord'], mag_field),

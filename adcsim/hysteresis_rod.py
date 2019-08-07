@@ -39,11 +39,16 @@ class HysteresisRod:
 
     @classmethod
     def fromdict(cls, data_dict):
-        return cls(data_dict['br'], data_dict['bs'], data_dict['hc'], data_dict['volume'], data_dict['axes_alignment'])
+        return cls(data_dict['br'], data_dict['bs'], data_dict['hc'], data_dict['volume'],
+                   np.array(data_dict['axes_alignment']))
 
     def asdict(self):
         return {'br': self.br, 'bs': self.bs, 'hc': self.hc, 'volume': self.volume,
                 'axes_alignment': self.axes_alignment.tolist()}
+
+    def define_integration_size(self, integration_size):
+        self.b = np.zeros(integration_size)
+        self.h = np.zeros(integration_size)
 
     def b_field_top(self, h):
         return 2 * self.bs * np.arctan(self.k * (h + self.hc))/np.pi

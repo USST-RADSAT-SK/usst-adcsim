@@ -459,8 +459,8 @@ class CubeSat(Polygons3D):
             data_dict = eval(data_dict)
         faces = [Face3D.fromdict(data_dict['faces'][i]) for i in range(len(data_dict['faces']))]
         hyst_rods = [HysteresisRod.fromdict(data_dict['hyst_rods'][i]) for i in range(len(data_dict['hyst_rods']))]
-        return cls(faces, data_dict['center_of_mass'], data_dict['inertia'], data_dict['residual_magnetic_moment'],
-                   data_dict['magnetic_moment'], hyst_rods)
+        return cls(faces, np.array(data_dict['center_of_mass']), np.array(data_dict['inertia']),
+                   np.array(data_dict['residual_magnetic_moment']), np.array(data_dict['magnetic_moment']), hyst_rods)
 
     @property
     def center_of_mass(self):
