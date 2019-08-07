@@ -238,4 +238,4 @@ def sim_attitude(sim_params, cubesat_params, file_name):
     # Note: the simulation and cubesat parameter dictionaries are saved as strings for the nc file. If you wish
     # you could just eval(a.cubesat_parameters) to get the dictionary back.
     a.to_netcdf(os.path.join(os.path.dirname(__file__), f'../../{file_name}.nc'))
-    dcm_to_stk_simple(time[::save_every], dcm_bn, f'{file_name}.a')
+    dcm_to_stk_simple(time[::save_every], dcm_bn, f'../../{file_name}.a')
