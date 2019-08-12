@@ -2,6 +2,8 @@ from adcsim.simulations.sim import sim_attitude
 import numpy as np
 from adcsim.hysteresis_rod import HysteresisRod
 from adcsim.CubeSat_model_examples import CubeSatModel
+from multiprocessing import Pool
+
 
 # create initial simulation parameters dict
 sim_params = {
@@ -21,8 +23,23 @@ cubesat = CubeSatModel(inertia=np.diag([8*(10**-3), 8*(10**-3), 2*(10**-3)]), ma
                        hyst_rods=[rod1, rod2])
 cubesat_params = cubesat.asdict()
 
+
+# THIS COMMENTED OUT STUFF IS FOR USING A SINGLE CORE
 # iterate over the desired permanent magnet strengths and run the simulation each time
-perm_strengths = np.arange(0.25, 5 + 0.25, 0.25)
-for p in perm_strengths:
-    cubesat_params['magnetic_moment'][-1] = p
-    sim_attitude(sim_params, cubesat_params, f'run_magmoment_{p}')
+# perm_strengths = np.arange(0.25, 5 + 0.25, 0.25)
+# for p in perm_strengths:
+#     cubesat_params['magnetic_moment'][-1] = p
+#     sim_attitude(sim_params, cubesat_params, f'run_magmoment_{p}')
+
+
+# USING MULTIPLE CORES
+if __name__ == "__main__":
+    pool = Pool(8)  # the number of cores to use is in the parenthesis
+
+    cp = []
+    perm_strengths = np.arange(0.25, 5 + 0.25, 0.25)
+    for p in perm_strengths:
+        cubesat_params['magnetic_moment'][-1] = p
+        cp.append([sim_params, cubesat_params, f'run_magmoment_{p}'])
+
+    pool.starmap(sim_attitude, cp)
