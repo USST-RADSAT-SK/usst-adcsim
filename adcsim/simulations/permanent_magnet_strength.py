@@ -3,9 +3,11 @@ import numpy as np
 from adcsim.hysteresis_rod import HysteresisRod
 from adcsim.CubeSat_model_examples import CubeSatModel
 from multiprocessing import Pool
+import os
 
 
 # create initial simulation parameters dict
+spin = -1 / 36 * np.pi  # maximum 5 degree per axis spin by requirement 3.08
 sim_params = {
     'time_step': 0.01,
     'save_every': 10,
@@ -34,12 +36,12 @@ cubesat_params = cubesat.asdict()
 
 # USING MULTIPLE CORES
 if __name__ == "__main__":
-    pool = Pool(8)  # the number of cores to use is in the parenthesis
+    pool = Pool(os.cpu_count())  # the number of cores differ on different computers
 
     cp = []
     perm_strengths = np.arange(0.25, 5 + 0.25, 0.25)
     for p in perm_strengths:
         cubesat_params['magnetic_moment'][-1] = p
-        cp.append([sim_params, cubesat_params, f'run_magmoment_{p}'])
+        cp.append([sim_params, cubesat_params, f'run_magmoment_{p:.2f}'])
 
     pool.starmap(sim_attitude, cp)
