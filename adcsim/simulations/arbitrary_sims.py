@@ -13,7 +13,7 @@ sim_params = {
     'end_time_index': 5000,
     'start_time': '2019/03/24 18:35:01',
     'final_time': '2019/03/24 18:35:51',
-    'omega0_body': [-2, 3, 3.5],
+    'omega0_body': np.array([-2, 3, 3.5]),
     'sigma0': [0.6440095705520482, 0.39840861883760637, 0.18585931442943798]
 }
 
@@ -32,22 +32,21 @@ if __name__ == "__main__":
     cp = []
 
     # First simulation (parameters what is shown above)
-    cp.append([sim_params, cubesat_params, 'first'])
+    cp.append([sim_params.copy(), cubesat_params.copy(), 'first'])
 
     # Second simulation (alter the parameters as desired before appending it to cp)
     cubesat_params['hyst_rods'][0]['axes_alignment'] = np.array([0, 0, 1.0])
     cubesat_params['magnetic_moment'] = np.array([1.5, 0, 0])
-    cp.append([sim_params, cubesat_params, 'second'])
+    cp.append([sim_params.copy(), cubesat_params.copy(), 'second'])
 
     # Third simulation (alter the parameters as desired before appending it to cp)
-    cubesat_params['hyst_rods'][0]['axes_alignment'] = np.array([0, 0, 1.0])
     sim_params['omega0_body'] = [0, -0.06666, 0]
-    cp.append([sim_params, cubesat_params, 'third'])
+    cp.append([sim_params.copy(), cubesat_params.copy(), 'third'])
 
     # Second simulation (alter the parameters as desired before appending it to cp)
     cubesat_params['hyst_rods'][0]['axes_alignment'] = np.array([1.0, 0, 0])
     cubesat_params['magnetic_moment'] = np.array([0, 0, 1.5])
-    cp.append([sim_params, cubesat_params, 'fourth'])
+    cp.append([sim_params.copy(), cubesat_params.copy(), 'fourth'])
 
     # ...
     # ...
