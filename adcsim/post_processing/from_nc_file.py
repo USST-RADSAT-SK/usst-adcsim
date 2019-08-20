@@ -11,7 +11,7 @@ from adcsim.animation import AnimateAttitude, DrawingVectors, AdditionalPlots
 import os
 ####################################
 in_file = '../../run0.nc'  # name and location of input .nc file; default is '../../run0.c'
-save_graphs = True  # change to true if you want to save copies of various graphs; default False
+save_graphs = False  # change to true if you want to save copies of various graphs; default False
 output_folder = '../../'  # change to save graphs to another folder; default is adcsim folder: '../../'
                           # 'output_folder = '../../from_nc_graphs/' is an example
 display_graphs = True  # change to False if you are opening multiple files in a loop; default True
