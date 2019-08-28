@@ -4,6 +4,7 @@ from adcsim.hysteresis_rod import HysteresisRod
 from adcsim.CubeSat_model_examples import CubeSatModel
 from multiprocessing import Pool
 import os
+import copy
 
 
 # create initial simulation parameters dict
@@ -42,6 +43,6 @@ if __name__ == "__main__":
     perm_strengths = np.arange(0.25, 5 + 0.25, 0.25)
     for p in perm_strengths:
         cubesat_params['magnetic_moment'][-1] = p
-        cp.append([sim_params, cubesat_params, f'run_magmoment_{p:.2f}'])
+        cp.append([copy.deepcopy(sim_params), copy.deepcopy(cubesat_params), f'run_magmoment_{p:.2f}'])
 
     pool.starmap(sim_attitude, cp)
