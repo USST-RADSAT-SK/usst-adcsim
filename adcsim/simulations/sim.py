@@ -11,7 +11,7 @@ from adcsim.dcm_convert.dcm_to_stk import dcm_to_stk_simple
 import os
 
 
-def sim_attitude(sim_params, cubesat_params, file_name):
+def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
     if isinstance(sim_params, str):
         sim_params = eval(sim_params)
 
@@ -187,5 +187,56 @@ def sim_attitude(sim_params, cubesat_params, file_name):
                                          '(they call it SNAP) recreation'})
     # Note: the simulation and cubesat parameter dictionaries are saved as strings for the nc file. If you wish
     # you could just eval(a.cubesat_parameters) to get the dictionary back.
+    if save:
+        a.to_netcdf(os.path.join(os.path.dirname(__file__), f'../../{file_name}.nc'))
+        dcm_to_stk_simple(time[::save_every], dcm_bn, os.path.join(os.path.dirname(__file__), f'../../{file_name}.a'))
+    if ret:
+        return a
+
+
+# function to continue a simulation from the simulation data time for a given number of additional iterations
+def continue_sim(sim_dataset, num_iter, file_name):
+    import copy
+    original_params = eval(sim_dataset.simulation_parameters)
+    sim_params = copy.deepcopy(original_params)
+    sim_params['end_time_index'] = num_iter
+    sim_params['start_time'] = sim_params['final_time']
+    last_data = sim_dataset.isel(time=-1)
+    sim_params['omega0_body'] = last_data.dcm_bn.values @ last_data.angular_vel.values
+    sim_params['sigma0'] = tr.dcm_to_mrp(last_data.dcm_bn.values)
+    cubesat_params = eval(sim_dataset.cubesat_parameters)
+    new_data = sim_attitude(sim_params, cubesat_params, 'easter_egg', save=False, ret=True)
+    new_data['time'] = np.arange(len(sim_dataset.time), len(sim_dataset.time) + sim_params['end_time_index']*sim_params['save_every'], 1)
+    a = xr.concat([sim_dataset, new_data], dim='time')
+    true_sim_params = eval(a.simulation_parameters)
+    true_sim_params['end_time_index'] = original_params['end_time_index'] + num_iter
+    true_sim_params['final_time'] = eval(new_data.simulation_parameters)['final_time']
+    a.attrs['simulation_parameters'] = str(true_sim_params)
     a.to_netcdf(os.path.join(os.path.dirname(__file__), f'../../{file_name}.nc'))
-    dcm_to_stk_simple(time[::save_every], dcm_bn, os.path.join(os.path.dirname(__file__), f'../../{file_name}.a'))
+
+
+if __name__ == "__main__":
+
+    # run a short simulation
+    from adcsim.hysteresis_rod import HysteresisRod
+    from adcsim.CubeSat_model_examples import CubeSatModel
+    sim_params = {
+        'time_step': 0.01,
+        'save_every': 10,
+        'end_time_index': 20,
+        'start_time': '2019/03/24 18:35:01',
+        'omega0_body': (np.pi / 180) * np.array([-2, 3, 3.5]),
+        'sigma0': [0.6440095705520482, 0.39840861883760637, 0.18585931442943798]
+    }
+    # create inital cubesat parameters dict (the raw data is way to large to do manually like above)
+    rod1 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075 / (100 ** 3), axes_alignment=np.array([1.0, 0, 0]))
+    rod2 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075 / (100 ** 3), axes_alignment=np.array([0, 1.0, 0]))
+    cubesat = CubeSatModel(inertia=np.diag([8 * (10 ** -3), 8 * (10 ** -3), 2 * (10 ** -3)]),
+                           magnetic_moment=np.array([0, 0, 1.5]),
+                           hyst_rods=[rod1, rod2])
+    cubesat_params = cubesat.asdict()
+
+    data = sim_attitude(sim_params, cubesat_params, 'test0', save=True, ret=True)
+
+    # run the simulation longer
+    continue_sim(data, 30, 'test1')

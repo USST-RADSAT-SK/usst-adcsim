@@ -16,10 +16,9 @@ spin = -1 / 36 * np.pi  # maximum 5 degree per axis spin by requirement 3.08
 sim_params = {
     'time_step': 0.01,
     'save_every': 10,
-    'end_time_index': 50,
+    'end_time_index': 20000,
     'start_time': '2019/03/24 18:35:01',
-    'final_time': '2019/03/24 18:35:51',
-    'omega0_body': [-2, 3, 3.5],
+    'omega0_body': (np.pi/180) * np.array([-2, 3, 3.5]),
     'sigma0': [0.6440095705520482, 0.39840861883760637, 0.18585931442943798]
 }
 
