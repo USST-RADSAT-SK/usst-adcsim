@@ -4,6 +4,7 @@ from adcsim.hysteresis_rod import HysteresisRod
 from adcsim.CubeSat_model_examples import CubeSatModel
 from multiprocessing import Pool
 import os
+import copy
 
 
 # create initial simulation parameters dict
@@ -32,21 +33,21 @@ if __name__ == "__main__":
     cp = []
 
     # First simulation (parameters what is shown above)
-    cp.append([sim_params.copy(), cubesat_params.copy(), 'first'])
+    cp.append([copy.deepcopy(sim_params), copy.deepcopy(cubesat_params), 'first'])
 
     # Second simulation (alter the parameters as desired before appending it to cp)
     cubesat_params['hyst_rods'][0]['axes_alignment'] = np.array([0, 0, 1.0])
     cubesat_params['magnetic_moment'] = np.array([1.5, 0, 0])
-    cp.append([sim_params.copy(), cubesat_params.copy(), 'second'])
+    cp.append([copy.deepcopy(sim_params), copy.deepcopy(cubesat_params), 'second'])
 
     # Third simulation (alter the parameters as desired before appending it to cp)
     sim_params['omega0_body'] = [0, -0.06666, 0]
-    cp.append([sim_params.copy(), cubesat_params.copy(), 'third'])
+    cp.append([copy.deepcopy(sim_params), copy.deepcopy(cubesat_params), 'third'])
 
     # Second simulation (alter the parameters as desired before appending it to cp)
     cubesat_params['hyst_rods'][0]['axes_alignment'] = np.array([1.0, 0, 0])
     cubesat_params['magnetic_moment'] = np.array([0, 0, 1.5])
-    cp.append([sim_params.copy(), cubesat_params.copy(), 'fourth'])
+    cp.append([copy.deepcopy(sim_params), copy.deepcopy(cubesat_params), 'fourth'])
 
     # ...
     # ...
