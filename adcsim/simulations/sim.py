@@ -95,107 +95,57 @@ def sim_attitude(sim_params, cubesat_params, file_name):
     # the integration
     k = 0
     for i in tqdm(range(len(time) - 1)):
+        # do the interpolation for various things
+        sun_vec[k], mag_field[k], density[k], lons[k], lats[k], alts[k], positions[k], velocities[k] = interp_info(i)
+
+        # keep track of dcms for various frame
+        dcm_bn[k] = tr.mrp_to_dcm(state[0])
+        dcm_on[k] = ut.inertial_to_orbit_frame(positions[k], velocities[k])
+        dcm_bo[k] = dcm_bn[k] @ dcm_on[k].T
+
+        # get magnetic field in inertial frame (for show right now)
+        mag_field_body[k] = (dcm_bn[k] @ mag_field[k]) * 10**-9  # in the body frame in units of T
+
+        # get unit vector towards nadir in body frame (for gravity gradient torque)
+        R0 = np.linalg.norm(positions[k])
+        nadir[k] = -positions[k]/R0
+        ue = dcm_bn[k] @ nadir[k]
+
+        # get sun vector in inertial frame (GCRS) (for solar pressure torque)
+        sun_vec_norm = sun_vec[k] / np.linalg.norm(sun_vec[k])
+        sun_vec_body[k] = dcm_bn[k] @ sun_vec_norm  # in the body frame
+
+        # get atmospheric density and velocity vector in body frame (for aerodynamic torque)
+        vel_body = dcm_bn[k] @ dt.get_air_velocity(velocities[k], positions[k])
+
+        # check if satellite is in eclipse (spherical earth approximation)
+        theta = np.arcsin(6378000 / (6378000+alts[k]))
+        angle_btw = np.arccos(nadir[k] @ sun_vec_norm)  # note: these vectors will be normalized already.
+        if angle_btw < theta:
+            is_eclipse[k] = 1
+
+        # get disturbance torque
+        aerod[k] = dt.aerodynamic_torque(vel_body, density[k], cubesat)
+        if not is_eclipse[k]:
+            solard[k] = dt.solar_pressure(sun_vec_body[k], sun_vec[k], positions[k], cubesat)
+        gravityd[k] = dt.gravity_gradient(ue, R0, cubesat)
+        magneticd[k] = dt.total_magnetic(mag_field_body[k], cubesat)
+        hyst_rod[k] = dt.hysteresis_rod_torque_save(mag_field_body[k], k, cubesat)
+        controls[k] = aerod[k] + solard[k] + gravityd[k] + magneticd[k] + hyst_rod[k].sum(axis=0)
+
+        # calculate solar power
+        if not is_eclipse[k]:
+            solar_power[k] = dt.solar_panel_power(sun_vec_body[k], sun_vec[k], positions[k], cubesat)
+
+        # propagate attitude state
+        states[k+1] = it.rk4(st.state_dot_mrp, time_step, state, controls[k], cubesat.inertia, cubesat.inertia_inv)
+
+        # do 'tidy' up things at the end of integration (needed for many types of attitude coordinates)
+        states[k+1] = state = ic.mrp_switching(states[k+1])
         if not i % save_every:
-            # do the interpolation for various things
-            sun_vec[k], mag_field[k], density[k], lons[k], lats[k], alts[k], positions[k], velocities[k] = interp_info(i)
-
-            # keep track of dcms for various frame
-            dcm_bn[k] = tr.mrp_to_dcm(state[0])
-            dcm_on[k] = ut.inertial_to_orbit_frame(positions[k], velocities[k])
-            dcm_bo[k] = dcm_bn[k] @ dcm_on[k].T
-
-            # get magnetic field in inertial frame (for show right now)
-            mag_field_body[k] = (dcm_bn[k] @ mag_field[k]) * 10**-9  # in the body frame in units of T
-
-            # get unit vector towards nadir in body frame (for gravity gradient torque)
-            R0 = np.linalg.norm(positions[k])
-            nadir[k] = -positions[k]/R0
-            ue = dcm_bn[k] @ nadir[k]
-
-            # get sun vector in inertial frame (GCRS) (for solar pressure torque)
-            sun_vec_norm = sun_vec[k] / np.linalg.norm(sun_vec[k])
-            sun_vec_body[k] = dcm_bn[k] @ sun_vec_norm  # in the body frame
-
-            # get atmospheric density and velocity vector in body frame (for aerodynamic torque)
-            vel_body = dcm_bn[k] @ dt.get_air_velocity(velocities[k], positions[k])
-
-            # check if satellite is in eclipse (spherical earth approximation)
-            theta = np.arcsin(6378000 / (6378000+alts[k]))
-            angle_btw = np.arccos(nadir[k] @ sun_vec_norm)  # note: these vectors will be normalized already.
-            if angle_btw < theta:
-                is_eclipse[k] = 1
-
-            # get disturbance torque
-            aerod[k] = dt.aerodynamic_torque(vel_body, density[k], cubesat)
-            if not is_eclipse[k]:
-                solard[k] = dt.solar_pressure(sun_vec_body[k], sun_vec[k], positions[k], cubesat)
-            gravityd[k] = dt.gravity_gradient(ue, R0, cubesat)
-            magneticd[k] = dt.total_magnetic(mag_field_body[k], cubesat)
-            hyst_rod[k] = dt.hysteresis_rod_torque_save(mag_field_body[k], k, cubesat)
-            controls[k] = aerod[k] + solard[k] + gravityd[k] + magneticd[k] + hyst_rod[k].sum(axis=0)
-
-            # calculate solar power
-            if not is_eclipse[k]:
-                solar_power[k] = dt.solar_panel_power(sun_vec_body[k], sun_vec[k], positions[k], cubesat)
-
-            # propagate attitude state
-            states[k+1] = it.rk4(st.state_dot_mrp, time_step, state, controls[k], cubesat.inertia, cubesat.inertia_inv)
-
-            # do 'tidy' up things at the end of integration (needed for many types of attitude coordinates)
-            states[k+1] = state = ic.mrp_switching(states[k+1])
             k += 1
-        else:
-            # do the interpolation for various things
-            sun_veci, mag_fieldi, densityi, lonsi, latsi, altsi, positionsi, velocitiesi = interp_info(i)
-
-            # keep track of dcms for various frame
-            dcm_bni = tr.mrp_to_dcm(state[0])
-            dcm_oni = ut.inertial_to_orbit_frame(positionsi, velocitiesi)
-            dcm_boi = dcm_bni @ dcm_oni.T
-
-            # get magnetic field in inertial frame (for show right now)
-            mag_field_bodyi = (dcm_bni @ mag_fieldi) * 10**-9  # in the body frame in units of T
-
-            # get unit vector towards nadir in body frame (for gravity gradient torque)
-            R0 = np.linalg.norm(positionsi)
-            nadiri = -positionsi/R0
-            ue = dcm_bni @ nadiri
-
-            # get sun vector in inertial frame (GCRS) (for solar pressure torque)
-            sun_vec_norm = sun_veci / np.linalg.norm(sun_veci)
-            sun_vec_bodyi = dcm_bni @ sun_vec_norm  # in the body frame
-
-            # get atmospheric density and velocity vector in body frame (for aerodynamic torque)
-            vel_body = dcm_bni @ dt.get_air_velocity(velocitiesi, positionsi)
-
-            # check if satellite is in eclipse (spherical earth approximation)
-            theta = np.arcsin(6378000 / (6378000+altsi))
-            angle_btw = np.arccos(nadiri @ sun_vec_norm)  # note: these vectors will be normalized already.
-            if angle_btw < theta:
-                is_eclipsei = 1
-            else:
-                is_eclipsei = 0
-
-            # get disturbance torque
-            aerodi = dt.aerodynamic_torque(vel_body, densityi, cubesat)
-            if not is_eclipsei:
-                solardi = dt.solar_pressure(sun_vec_bodyi, sun_veci, positionsi, cubesat)
-            else:
-                solardi = np.zeros(3)
-            gravitydi = dt.gravity_gradient(ue, R0, cubesat)
-            magneticdi = dt.total_magnetic(mag_field_bodyi, cubesat)
-            hyst_rodi = dt.hysteresis_rod_torque(mag_field_bodyi, cubesat)
-            controlsi = magneticdi + hyst_rodi + solardi + aerodi + gravitydi
-
-            # calculate solar power
-            if not is_eclipsei:
-                solar_poweri = dt.solar_panel_power(sun_vec_bodyi, sun_veci, positionsi, cubesat)
-
-            # propagate attitude state
-            state = it.rk4(st.state_dot_mrp, time_step, state, controlsi, cubesat.inertia, cubesat.inertia_inv)
-
-            # do 'tidy' up things at the end of integration (needed for many types of attitude coordinates)
-            state = ic.mrp_switching(state)
+            if k >= le:
+                break
     states = np.delete(states, 1, axis=0)
     for i, rod in enumerate(cubesat.hyst_rods):
         b_rods[:, i] = rod.b = np.delete(rod.b, 1, axis=0)
