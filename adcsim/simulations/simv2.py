@@ -30,4 +30,4 @@ cubesat = CubeSatModel(inertia=np.diag([8*(10**-3), 8*(10**-3), 2*(10**-3)]), ma
 cubesat_params = cubesat.asdict()
 
 
-sim_attitude(sim_params, cubesat_params, 'run1')
+sim_attitude(sim_params, cubesat_params, 'run0')
