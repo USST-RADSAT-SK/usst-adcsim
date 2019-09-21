@@ -44,12 +44,12 @@ density = np.zeros(len(time))
 mag_field = np.zeros((len(time), 3))
 
 # declare all orbit stuff
-line1 = '1 44031U 98067PX  19083.14584174  .00005852  00000-0  94382-4 0  9997'
-line2 = '2 44031  51.6393  63.5548 0003193 165.0023 195.1063 15.54481029  8074'
+line1 = '1 42734U 98067MP  17152.85565519 +.00009767 +00000-0 +15013-3 0  9992'
+line2 = '2 42734 051.6391 114.7056 0008592 222.4492 137.5836 15.54916042000909'
 satellite = EarthSatellite(line1, line2)
 ts = load.timescale()
-time_track = datetime(2019, 3, 24, 18, 35, 1, tzinfo=utc)
-time_tracks = [datetime(2019, 3, 24, 18, 35, 1, tzinfo=utc) + timedelta(seconds=time_step*i) for i in range(len(time))]
+time_track = datetime(2017, 6, 1, 20, 32, 9, tzinfo=utc)
+time_tracks = [datetime(2017, 6, 1, 20, 32, 9, tzinfo=utc) + timedelta(seconds=time_step*i) for i in range(len(time))]
 t = ts.utc(time_track)
 geo = satellite.at(t)
 subpoint = geo.subpoint()
@@ -117,4 +117,5 @@ a = xr.Dataset({'sun': (['time', 'cord'], sun_vec),
                 'lats': ('time', lats), 'alts': ('time', alts), 'positions': (['time', 'cord'], positions),
                 'velocities': (['time', 'cord'], velocities)},
                coords={'time': time_tracks, 'cord': ['x', 'y', 'z']})
-a.to_netcdf(os.path.join(os.path.dirname(__file__), '../orbit_pre_process.nc'))
+a.to_netcdf(os.path.join(os.path.dirname(__file__), '../orbit_pre_process3'
+                                                    '.nc'))

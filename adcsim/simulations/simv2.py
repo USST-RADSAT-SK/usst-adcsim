@@ -16,18 +16,18 @@ spin = -1 / 36 * np.pi  # maximum 5 degree per axis spin by requirement 3.08
 sim_params = {
     'time_step': 0.01,
     'save_every': 10,
-    'end_time_index': 20000,
+    'end_time_index': 21000,
     'start_time': '2019/03/24 18:35:01',
-    'omega0_body': (np.pi/180) * np.array([-2, 3, 3.5]),
+    'omega0_body': (np.pi/180) * np.array([-5, -5, -5]),
     'sigma0': [0.6440095705520482, 0.39840861883760637, 0.18585931442943798]
 }
 
 # create inital cubesat parameters dict (the raw data is way to large to do manually like above)
 rod1 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075/(100**3), axes_alignment=np.array([1.0, 0, 0]))
 rod2 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075/(100**3), axes_alignment=np.array([0, 1.0, 0]))
-cubesat = CubeSatModel(inertia=np.diag([8*(10**-3), 8*(10**-3), 2*(10**-3)]), magnetic_moment=np.array([0, 0, 1.5]),
+cubesat = CubeSatModel(inertia=np.diag([0.008, 0.008, 0.002]), magnetic_moment=np.array([0, 0, 0.5]),
                        hyst_rods=[rod1, rod2])
 cubesat_params = cubesat.asdict()
 
 
-sim_attitude(sim_params, cubesat_params, 'run0')
+sim_attitude(sim_params, cubesat_params, 'run1', aerodynamic_torque=False)

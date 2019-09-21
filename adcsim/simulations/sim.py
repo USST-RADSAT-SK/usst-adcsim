@@ -11,7 +11,8 @@ from adcsim.dcm_convert.dcm_to_stk import dcm_to_stk_simple
 import os
 
 
-def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
+def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False, aerodynamic_torque=True,
+                 solar_torque=True, magnetic_torque=True, gravity_gradient_torque=True):
     if isinstance(sim_params, str):
         sim_params = eval(sim_params)
 
@@ -52,6 +53,12 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
     hyst_rod = np.zeros((le, len(cubesat.hyst_rods), 3))
     h_rods = np.zeros((le, len(cubesat.hyst_rods)))
     b_rods = np.zeros((le, len(cubesat.hyst_rods)))
+    xpos_horizon = np.zeros(le)
+    xneg_horizon = np.zeros(le)
+    ypos_horizon = np.zeros(le)
+    yneg_horizon = np.zeros(le)
+    zpos_horizon = np.zeros(le)
+    zneg_horizon = np.zeros(le)
 
     # load saved data
     saved_data = xr.open_dataset(os.path.join(os.path.dirname(__file__), '../../orbit_pre_process.nc'))
@@ -71,7 +78,6 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
     def interp_info(i):
         ac = interp_data(i)
         return ac[0: 3], ac[3: 6], ac[6], ac[7], ac[8], ac[9], ac[10: 13], ac[13: 16]
-
 
     # initialize attitude so that z direction of body frame is aligned with nadir
     sun_vec[0], mag_field[0], density[0], lons[0], lats[0], alts[0], positions[0], velocities[0] = interp_info(0)
@@ -124,13 +130,35 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
         if angle_btw < theta:
             is_eclipse[k] = 1
 
+        # the angle between the horizon and the face is |a - b| where a is the angle between the horizon and nadir,
+        # theta, b is the angle between the face direction and nadir
+        angle_xpos = np.arccos(ue[0])
+        angle_ypos = np.arccos(ue[1])
+        angle_zpos = np.arccos(ue[2])
+        angle_xneg = np.arccos(-ue[0])
+        angle_yneg = np.arccos(-ue[1])
+        angle_zneg = np.arccos(-ue[2])
+
+        # negative values will be left indicate that the face done not intersect the earth, positive values
+        # therefore mean that the face intercts the earth
+        xpos_horizon[k] = theta - angle_xpos
+        xneg_horizon[k] = theta - angle_xneg
+        ypos_horizon[k] = theta - angle_ypos
+        yneg_horizon[k] = theta - angle_yneg
+        zpos_horizon[k] = theta - angle_zpos
+        zneg_horizon[k] = theta - angle_zneg
+
         # get disturbance torque
-        aerod[k] = dt.aerodynamic_torque(vel_body, density[k], cubesat)
-        if not is_eclipse[k]:
-            solard[k] = dt.solar_pressure(sun_vec_body[k], sun_vec[k], positions[k], cubesat)
-        gravityd[k] = dt.gravity_gradient(ue, R0, cubesat)
-        magneticd[k] = dt.total_magnetic(mag_field_body[k], cubesat)
-        hyst_rod[k] = dt.hysteresis_rod_torque_save(mag_field_body[k], k, cubesat)
+        if aerodynamic_torque:
+            aerod[k] = dt.aerodynamic_torque(vel_body, density[k], cubesat)
+        if solar_torque:
+            if not is_eclipse[k]:
+                solard[k] = dt.solar_pressure(sun_vec_body[k], sun_vec[k], positions[k], cubesat)
+        if gravity_gradient_torque:
+            gravityd[k] = dt.gravity_gradient(ue, R0, cubesat)
+        if magnetic_torque:
+            magneticd[k] = dt.total_magnetic(mag_field_body[k], cubesat)
+            hyst_rod[k] = dt.hysteresis_rod_torque_save(mag_field_body[k], k, cubesat)
         controls[k] = aerod[k] + solard[k] + gravityd[k] + magneticd[k] + hyst_rod[k].sum(axis=0)
 
         # calculate solar power
@@ -180,7 +208,13 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
                     'hyst_rod_magnetization': (['time', 'hyst_rod'], b_rods),
                     'hyst_rod_external_field': (['time', 'hyst_rod'], h_rods),
                     'nadir': (['time', 'cord'], nadir),
-                    'solar_power': ('time', solar_power)},
+                    'solar_power': ('time', solar_power),
+                    'xpos_horizon': ('time', xpos_horizon),
+                    'xneg_horizon': ('time', xneg_horizon),
+                    'ypos_horizon': ('time', ypos_horizon),
+                    'yneg_horizon': ('time', yneg_horizon),
+                    'zpos_horizon': ('time', zpos_horizon),
+                    'zneg_horizon': ('time', zneg_horizon)},
                    coords={'time': np.arange(0, le, 1), 'cord': ['x', 'y', 'z'], 'hyst_rod': [f'rod{i}' for i in range(len(cubesat.hyst_rods))]},
                    attrs={'simulation_parameters': str(sim_params_dict), 'cubesat_parameters': str(cubesat.asdict()),
                           'description': 'University of kentucky attitude propagator software '
