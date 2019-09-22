@@ -74,7 +74,6 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False, ae
                         axis=1)
     interp_data = interp1d(x, ab.T)
 
-
     def interp_info(i):
         ac = interp_data(i)
         return ac[0: 3], ac[3: 6], ac[6], ac[7], ac[8], ac[9], ac[10: 13], ac[13: 16]
@@ -82,9 +81,7 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False, ae
     # initialize attitude so that z direction of body frame is aligned with nadir
     sun_vec[0], mag_field[0], density[0], lons[0], lats[0], alts[0], positions[0], velocities[0] = interp_info(0)
     sigma0 = np.array(sim_params['sigma0'])
-    dcm0 = tr.mrp_to_dcm(sigma0)
-    omega0_body = np.array(sim_params['omega0_body'])
-    omega0 = dcm0.T @ omega0_body
+    omega0 = np.array(sim_params['omega0_body'])
     states[0] = state = [sigma0, omega0]
     dcm_bn[0] = tr.mrp_to_dcm(states[0][0])
     dcm_on[0] = ut.inertial_to_orbit_frame(positions[0], velocities[0])
