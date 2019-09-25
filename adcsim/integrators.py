@@ -5,7 +5,7 @@ see https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods for rk4 implementa
 """
 
 
-def rk4(fn, time_step, state, *args):
+def rk4(fn, time, state, time_step, *args):
     """
     Performs rk4 numerical integration given the differential equation defined in 'fn' variable.
 
@@ -17,10 +17,10 @@ def rk4(fn, time_step, state, *args):
     'fn'
     :return: The new state
     """
-    k1 = time_step*fn(state, *args)
-    k2 = time_step*fn(state + k1/2, *args)
-    k3 = time_step*fn(state + k2/2, *args)
-    k4 = time_step*fn(state + k3, *args)
+    k1 = time_step*fn(time, state, *args)
+    k2 = time_step*fn(time + 0.5 * time_step, state + 0.5 * k1, *args)
+    k3 = time_step*fn(time + 0.5 * time_step, state + 0.5 * k2, *args)
+    k4 = time_step*fn(time + time_step, state + k3, *args)
     return state + (1/6)*(k1 + 2*k2 + 2*k3 + k4)
 
 

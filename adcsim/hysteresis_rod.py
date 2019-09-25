@@ -22,6 +22,7 @@ class HysteresisRod:
         self.h_previous = h_initial
         self.h_current = h_initial
         self.b_current = b_initial
+        self.i = 0  # index for saving magnetic history
         if integration_size is not None:
             self.b = np.zeros(integration_size)
             self.h = np.zeros(integration_size)
@@ -70,6 +71,18 @@ class HysteresisRod:
         return self.u0 + (b - self.b_field_bottom(h)) * (self.b_field_top_derivative(h) - self.u0) / \
                (self.b_field_top(h) - self.b_field_bottom(h))
 
+    def peek_magnetization(self, h):
+        """
+        Peeks ahead by calculating what the magnetization would be at the
+        next step without actually updating the history.
+        :param h: The current value of the external magnetic field
+        :return: The induced magnetic field at h.
+        """
+        if h >= self.h_current:
+            return rk4_general(self.mag_process_positive_h, h - self.h_current, self.h_current, self.b_current)
+        else:
+            return rk4_general(self.mag_process_negative_h, h - self.h_current, self.h_current, self.b_current)
+
     def propagate_magnetization(self, h):
         """
         propagates the magnetization state of the hysteresis rod.
@@ -80,13 +93,15 @@ class HysteresisRod:
         self.b_previous = self.b_current
         step = self.h_current - self.h_previous
         if self.h_current >= self.h_previous:
-            self.b_current = rk4_general(self.mag_process_positive_h, step, self.h_current, self.b_previous)
+            # EDIT changed self.h_current to self.h_previous
+            self.b_current = rk4_general(self.mag_process_positive_h, step, self.h_previous, self.b_previous)
             # This is the rk4 version of simple euler method:
             # self.b_current = self.b_previous + self.mag_process_positive_h(self.h_current, self.b_previous) * step
         else:
-            self.b_current = rk4_general(self.mag_process_negative_h, step, self.h_current, self.b_previous)
+            self.b_current = rk4_general(self.mag_process_negative_h, step, self.h_previous, self.b_previous)
+        return self.b_current
 
-    def propagate_and_save_magnetization(self, h, i):
+    def propagate_and_save_magnetization(self, h):
         """
         Propagates the magnetization state of the hysteresis rod. If the class has been set up to save all the
         magnetization data, this function saves the data to the self.h and self.b arrays.
@@ -103,8 +118,12 @@ class HysteresisRod:
             # self.b_current = self.b_previous + self.mag_process_positive_h(self.h_current, self.b_previous) * step
         else:
             self.b_current = rk4_general(self.mag_process_negative_h, step, self.h_current, self.b_previous)
-        self.h[i+1] = self.h_current
-        self.b[i+1] = self.b_current
+
+        self.i += 1
+        self.h[self.i] = self.h_current
+        self.b[self.i] = self.b_current
+
+        return self.b_current
 
     def plot_limiting_cycle(self, plot_magnetization=True):
         import matplotlib.pyplot as plt

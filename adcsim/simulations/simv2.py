@@ -14,12 +14,13 @@ import os
 # create initial simulation parameters dict
 spin = -1 / 36 * np.pi  # maximum 5 degree per axis spin by requirement 3.08
 sim_params = {
-    'time_step': 0.01,
+    'time_step': 0.1,
     'save_every': 10,
-    'end_time_index': 20000,
+    'end_time_index': 200,
     'start_time': '2019/03/24 18:35:01',
     'omega0_body': (np.pi/180) * np.array([-2, 3, 3.5]),
-    'sigma0': [0.6440095705520482, 0.39840861883760637, 0.18585931442943798]
+    'sigma0': [0.6440095705520482, 0.39840861883760637, 0.18585931442943798],
+    'disturbance_torques': ['gravity', 'magnetic', 'hysteresis', 'aerodynamic', 'solar']
 }
 
 # create inital cubesat parameters dict (the raw data is way to large to do manually like above)
