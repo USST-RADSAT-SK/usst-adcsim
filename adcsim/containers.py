@@ -3,6 +3,7 @@ import xarray as xr
 from datetime import datetime, timedelta
 from skyfield.api import utc
 from scipy.interpolate.interpolate import interp1d
+from collections import namedtuple
 
 from adcsim.CubeSat_model import CubeSat
 
@@ -35,41 +36,55 @@ class OrbitData:
         self.velocities = interpolated[13:16]
 
 class AttitudeData:
-    def __init__(self, cubesat: CubeSat):
-        self.states = np.zeros((2, 3))
-        self.dcm_bn = np.zeros((3, 3))
-        self.dcm_on = np.zeros((3, 3))
-        self.dcm_bo = np.zeros((3, 3))
-        self.controls = np.zeros(3)
-        self.nadir = np.zeros(3)
-        self.sun_vec = np.zeros(3)
-        self.sun_vec_body = np.zeros(3)
-        self.density = 0.0
-        self.aerod = np.zeros(3)
-        self.gravityd = np.zeros(3)
-        self.solard = np.zeros(3)
-        self.magneticd = np.zeros(3)
-        self.mag_field = np.zeros(3)
-        self.mag_field_body = np.zeros(3)
-        self.solar_power = 0.0
-        self.is_eclipse = 0.0
-        self.hyst_rod = np.zeros((len(cubesat.hyst_rods), 3))
-        self.h_rods = np.zeros((len(cubesat.hyst_rods)))
-        self.b_rods = np.zeros((len(cubesat.hyst_rods)))
-        self.lons = 0.0
-        self.lats = 0.0
-        self.alts = 0.0
-        self.positions = np.zeros(3)
-        self.velocities = np.zeros(3)
+    class _AttitudeData:
+        def __init__(self, cubesat: CubeSat):
+            self.states = np.zeros((2, 3))
+            self.dcm_bn = np.zeros((3, 3))
+            self.dcm_on = np.zeros((3, 3))
+            self.dcm_bo = np.zeros((3, 3))
+            self.controls = np.zeros(3)
+            self.nadir = np.zeros(3)
+            self.sun_vec = np.zeros(3)
+            self.sun_vec_body = np.zeros(3)
+            self.density = 0.0
+            self.aerod = np.zeros(3)
+            self.gravityd = np.zeros(3)
+            self.solard = np.zeros(3)
+            self.magneticd = np.zeros(3)
+            self.mag_field = np.zeros(3)
+            self.mag_field_body = np.zeros(3)
+            self.solar_power = 0.0
+            self.is_eclipse = 0.0
+            self.hyst_rod = np.zeros((len(cubesat.hyst_rods), 3))
+            self.h_rods = np.zeros((len(cubesat.hyst_rods)))
+            self.b_rods = np.zeros((len(cubesat.hyst_rods)))
+            self.lons = 0.0
+            self.lats = 0.0
+            self.alts = 0.0
+            self.positions = np.zeros(3)
+            self.velocities = np.zeros(3)
 
-    def interp_orbit_data(self, orbit: OrbitData, t: float):
+    def __init__(self, cubesat):
+        self.temp = self._AttitudeData(cubesat)
+        self.save = self._AttitudeData(cubesat)
+
+    def interp_orbit_data(self, orbit: OrbitData, t: float, save: bool=False):
         orbit.set_time(t)
-        self.sun_vec = orbit.sun_vec
-        self.mag_field = orbit.mag_field
-        self.density = orbit.density
-        self.lons = orbit.lons
-        self.lats = orbit.lats
-        self.alts = orbit.alts
-        self.positions = orbit.positions
-        self.velocities = orbit.velocities
-
+        if save:
+            self.save.sun_vec = orbit.sun_vec
+            self.save.mag_field = orbit.mag_field
+            self.save.density = orbit.density
+            self.save.lons = orbit.lons
+            self.save.lats = orbit.lats
+            self.save.alts = orbit.alts
+            self.save.positions = orbit.positions
+            self.save.velocities = orbit.velocities
+        else:
+            self.temp.sun_vec = orbit.sun_vec
+            self.temp.mag_field = orbit.mag_field
+            self.temp.density = orbit.density
+            self.temp.lons = orbit.lons
+            self.temp.lats = orbit.lats
+            self.temp.alts = orbit.alts
+            self.temp.positions = orbit.positions
+            self.temp.velocities = orbit.velocities

@@ -70,17 +70,19 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
 
     # initialize attitude so that z direction of body frame is aligned with nadir
     # sun_vec[0], mag_field[0], density[0], lons[0], lats[0], alts[0], positions[0], velocities[0] = interp_info(0)
+    attitude.interp_orbit_data(orbit, 0.0)
+    sun_vec[0], mag_field[0], density[0], lons[0], lats[0], alts[0], positions[0], velocities[0] = attitude.temp.sun_vec, attitude.temp.mag_field, attitude.temp.density, attitude.temp.lons, attitude.temp.lats, attitude.temp.alts, attitude.temp.positions, attitude.temp.velocities
     sigma0 = np.array(sim_params['sigma0'])
     dcm0 = tr.mrp_to_dcm(sigma0)
     omega0_body = np.array(sim_params['omega0_body'])
     omega0 = dcm0.T @ omega0_body
-    states[0] = state = attitude.states = [sigma0, omega0]
-    dcm_bn[0] = attitude.dcm_bn = tr.mrp_to_dcm(states[0][0])
-    dcm_on[0] = attitude.dcm_on = ut.inertial_to_orbit_frame(positions[0], velocities[0])
-    dcm_bo[0] = attitude.dcm_bo = dcm_bn[0] @ dcm_on[0].T
+    states[0] = state = [sigma0, omega0]
+    dcm_bn[0] = tr.mrp_to_dcm(states[0][0])
+    dcm_on[0] = ut.inertial_to_orbit_frame(positions[0], velocities[0])
+    dcm_bo[0] = dcm_bn[0] @ dcm_on[0].T
 
     # Put hysteresis rods in an initial state that is reasonable. (Otherwise you can get large magnetization from the rods)
-    mag_field_body[0] = attitude.mag_field_body = (dcm_bn[0] @ mag_field[0]) * 10 ** -9  # in the body frame in units of T
+    mag_field_body[0] = (dcm_bn[0] @ mag_field[0]) * 10 ** -9  # in the body frame in units of T
     for rod in cubesat.hyst_rods:
         rod.define_integration_size(le+1)
         axes = np.argwhere(rod.axes_alignment == 1)[0][0]
@@ -89,6 +91,7 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
 
     # initialize the disturbance torque object
     disturbance_torques = dt.DisturbanceTorques(**{torque: True for torque in sim_params['disturbance_torques']})
+    disturbance_torques.save_hysteresis = True
 
     # the integration
     k = 0
@@ -137,6 +140,7 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
 
         # propagate attitude state
         disturbance_torques.propagate_hysteresis = True  # should propagate the hysteresis history, bringing it up to the current position
+        disturbance_torques.save_torques = True
         state = it.rk4(st.state_dot_mrp, time[i], state, time_step, attitude, orbit, cubesat, disturbance_torques)
         # controls[k] = ...
 
@@ -144,28 +148,28 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
         state = ic.mrp_switching(state)
         if not i % save_every:
             states[k] = state
-            dcm_bn[k] = attitude.dcm_bn
-            dcm_on[k] = attitude.dcm_on
-            dcm_bo[k] = attitude.dcm_bo
-            controls[k] = attitude.controls
-            nadir[k] = attitude.nadir
-            sun_vec[k] = attitude.sun_vec
-            sun_vec_body[k] = attitude.sun_vec_body
-            lons[k] = attitude.lons
-            lats[k] = attitude.lats
-            alts[k] = attitude.alts
-            positions[k] = attitude.positions
-            velocities[k] = attitude.velocities
-            aerod[k] = attitude.aerod
-            gravityd[k] = attitude.gravityd
-            solard[k] = attitude.solard
-            magneticd[k] = attitude.magneticd
-            density[k] = attitude.density
-            mag_field[k] = attitude.mag_field
-            mag_field_body[k] = attitude.mag_field_body
-            solar_power[k] = attitude.solar_power
-            is_eclipse[k] = attitude.is_eclipse
-            hyst_rod[k] = attitude.hyst_rod
+            dcm_bn[k] = attitude.save.dcm_bn
+            dcm_on[k] = attitude.save.dcm_on
+            dcm_bo[k] = attitude.save.dcm_bo
+            controls[k] = attitude.save.controls
+            nadir[k] = attitude.save.nadir
+            sun_vec[k] = attitude.save.sun_vec
+            sun_vec_body[k] = attitude.save.sun_vec_body
+            lons[k] = attitude.save.lons
+            lats[k] = attitude.save.lats
+            alts[k] = attitude.save.alts
+            positions[k] = attitude.save.positions
+            velocities[k] = attitude.save.velocities
+            aerod[k] = attitude.save.aerod
+            gravityd[k] = attitude.save.gravityd
+            solard[k] = attitude.save.solard
+            magneticd[k] = attitude.save.magneticd
+            density[k] = attitude.save.density
+            mag_field[k] = attitude.save.mag_field
+            mag_field_body[k] = attitude.save.mag_field_body
+            solar_power[k] = attitude.save.solar_power
+            is_eclipse[k] = attitude.save.is_eclipse
+            hyst_rod[k] = attitude.save.hyst_rod
             k += 1
             disturbance_torques.save_hysteresis = True
             if k >= le:

@@ -37,61 +37,69 @@ class DisturbanceTorques(object):
         self._previous_torques = {key: np.zeros(3) for key in self._include_torques}
         self.propagate_hysteresis = False
         self.save_hysteresis = False
+        self.save_torques = False
 
     def torque(self, time: float, state: np.ndarray, attitude: AttitudeData, orbit: OrbitData, cubesat: CubeSat):
         # interpolate all the pre-calculated data
-        attitude.interp_orbit_data(orbit, time)
+        attitude.interp_orbit_data(orbit, time, save=self.save_torques)
 
-        torque = np.zeros(3)
+        if self.save_torques:
+            c = attitude.save
+            self.save_torques = False
+        else:
+            c = attitude.temp
 
-        attitude.dcm_bn = mrp_to_dcm(state[0])
-        attitude.dcm_on = inertial_to_orbit_frame(attitude.positions, attitude.velocities)
-        attitude.dcm_bo = attitude.dcm_bn @ attitude.dcm_on.T
 
-        R0 = np.linalg.norm(attitude.positions)
-        attitude.nadir = -attitude.positions / R0
+        c.controls = np.zeros(3)
 
-        attitude.mag_field_body = (attitude.dcm_bn @ attitude.mag_field) * 1e-9  # body frame, units T
+        c.dcm_bn = mrp_to_dcm(state[0])
+        c.dcm_on = inertial_to_orbit_frame(c.positions, c.velocities)
+        c.dcm_bo = c.dcm_bn @ c.dcm_on.T
+
+        R0 = np.linalg.norm(c.positions)
+        c.nadir = -c.positions / R0
+
+        c.mag_field_body = (c.dcm_bn @ c.mag_field) * 1e-9  # body frame, units T
 
         # the request for propagation should come at the beginning of each step
         if self.propagate_hysteresis:
-            h = attitude.mag_field_body / self._u0
+            h = c.mag_field_body / self._u0
             for rod in cubesat.hyst_rods:
                 h_proj = h @ rod.axes_alignment
                 # the request to save should come in every X steps
                 if self.save_hysteresis:
                     rod.propagate_and_save_magnetization(h_proj)
-                    self.save_hysteresis = False
                 else:
                     rod.propagate_magnetization(h_proj)
+            self.save_hysteresis = False
             self.propagate_hysteresis = False
 
         if self._include_torques['gravity']:
-            ue = attitude.dcm_bn @ attitude.nadir
-            attitude.gravityd = self.gravity_gradient(ue, R0, cubesat)
-            torque += attitude.gravityd
+            ue = c.dcm_bn @ c.nadir
+            c.gravityd = self.gravity_gradient(ue, R0, cubesat)
+            c.controls += c.gravityd
         if self._include_torques['aerodynamic']:
-            vel_body = attitude.dcm_bn @ self.get_air_velocity(attitude.velocities, attitude.positions)
-            attitude.aerod = self.aerodynamic_torque(vel_body, attitude.density, cubesat)
-            torque += attitude.aerod
+            vel_body = c.dcm_bn @ self.get_air_velocity(c.velocities, c.positions)
+            c.aerod = self.aerodynamic_torque(vel_body, c.density, cubesat)
+            c.controls += c.aerod
         if self._include_torques['solar']:
-            sun_vec_norm = attitude.sun_vec / np.linalg.norm(attitude.sun_vec)
-            attitude.sun_vec_body = attitude.dcm_bn @ sun_vec_norm
-            theta = np.arcsin(6.378e6 / (6.378e6 + attitude.alts))
-            angle_btw = np.arccos(attitude.nadir @ sun_vec_norm)
+            sun_vec_norm = c.sun_vec / np.linalg.norm(c.sun_vec)
+            c.sun_vec_body = c.dcm_bn @ sun_vec_norm
+            theta = np.arcsin(6.378e6 / (6.378e6 + c.alts))
+            angle_btw = np.arccos(c.nadir @ sun_vec_norm)
             if angle_btw < theta:
-                attitude.is_eclipse = 1
+                c.is_eclipse = 1
             else:
-                attitude.solard = self.solar_pressure(attitude.sun_vec_body, attitude.sun_vec, attitude.positions, cubesat)
-                torque += attitude.solard
+                c.solard = self.solar_pressure(c.sun_vec_body, c.sun_vec, c.positions, cubesat)
+                c.controls += c.solard
         if self._include_torques['magnetic']:
-            attitude.magneticd = self.total_magnetic(attitude.mag_field_body, cubesat)
-            torque += attitude.magneticd
+            c.magneticd = self.total_magnetic(c.mag_field_body, cubesat)
+            c.controls += c.magneticd
         if self._include_torques['hysteresis']:
-            attitude.hyst_rod = self.hysteresis_rod_torque_peek(attitude.mag_field_body, cubesat)
-            torque += attitude.hyst_rod
+            c.hyst_rod = self.hysteresis_rod_torque_peek(c.mag_field_body, cubesat)
+            c.controls += c.hyst_rod
 
-        return torque
+        return c.controls
 
 
 
