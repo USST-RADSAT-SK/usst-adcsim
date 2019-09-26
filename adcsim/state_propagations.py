@@ -9,17 +9,18 @@ The angular velocity equation is always the same, but the attitude equation can 
 """
 import numpy as np
 from adcsim import util as ut
+from adcsim.CubeSat_model import CubeSat
+from adcsim.disturbance_torques import DisturbanceTorques
+from adcsim.simulations.sim import AttitudeData, OrbitData
 
 
 # differential equations for an MRP attitude parametrization
-def state_dot_mrp(state, control, inertia, inertia_inv):
+def state_dot_mrp(time: float, state: np.ndarray, attitude: AttitudeData, orbit: OrbitData, cubesat: CubeSat, disturbance_torques: DisturbanceTorques):
     """
     Differential attitude equation for the Modified Rodriguez Parameters (MRP) attitude parametrization, with eulers
     rotational equation of motion.
     :param state: np.ndarray. The current attitude state (first index is attitude, second index is angular velocity)
-    :param control: np.ndarray. The current applied torque to the spacecraft in the body frame
-    :param inertia: np.ndarray. Moment of inertial tensor of the spacecraft.
-    :param inertia_inv: np.ndarray. Inverse of the moment of inertial tensor of the spacecraft.
+    :param
     :return: np.ndarray. First index is value of attitude differential equation, second is value of angular velocity
     differential equation
     """
@@ -28,8 +29,10 @@ def state_dot_mrp(state, control, inertia, inertia_inv):
         np.outer(state[0], state[0])
     sigma_propagation = (1/4) * a  @ state[1]
 
+    control = disturbance_torques.torque(time, state, attitude, orbit, cubesat)
+
     # omegas
-    omega_propagation = inertia_inv @ ((-ut.cross_product_operator(state[1]) @ inertia @ state[1]) + control)
+    omega_propagation = cubesat.inertia_inv @ ((-ut.cross_product_operator(state[1]) @ cubesat.inertia @ state[1]) + control)
 
     return np.array([sigma_propagation, omega_propagation])
 
