@@ -19,11 +19,11 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
 
     # declare time step for integration
     time_step = sim_params['time_step']
-    end_time = sim_params['end_time_index']
+    end_time = sim_params['duration']
     time = np.arange(0, end_time, time_step)
     le = int(len(time)/save_every)
 
-    num_simulation_data_points = int(sim_params['end_time_index'] // sim_params['time_step']) + 1
+    num_simulation_data_points = int(sim_params['duration'] // sim_params['time_step']) + 1
     start_time = datetime.strptime(sim_params['start_time'], "%Y/%m/%d %H:%M:%S")
     start_time = start_time.replace(tzinfo=utc)
     final_time = start_time + timedelta(seconds=sim_params['time_step']*num_simulation_data_points)
@@ -190,7 +190,7 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
     sigmas = states[:, 0]
 
     # save the data
-    sim_params_dict = {'time_step': time_step, 'save_every': save_every, 'end_time_index': end_time,
+    sim_params_dict = {'time_step': time_step, 'save_every': save_every, 'duration': end_time,
                        'start_time': start_time.strftime('%Y/%m/%d %H:%M:%S'),
                        'final_time': final_time.strftime('%Y/%m/%d %H:%M:%S'), 'omega0_body': omega0_body.tolist(),
                        'sigma0': sigma0.tolist()}
@@ -233,17 +233,17 @@ def continue_sim(sim_dataset, num_iter, file_name):
     import copy
     original_params = eval(sim_dataset.simulation_parameters)
     sim_params = copy.deepcopy(original_params)
-    sim_params['end_time_index'] = num_iter
+    sim_params['duration'] = num_iter
     sim_params['start_time'] = sim_params['final_time']
     last_data = sim_dataset.isel(time=-1)
     sim_params['omega0_body'] = last_data.dcm_bn.values @ last_data.angular_vel.values
     sim_params['sigma0'] = tr.dcm_to_mrp(last_data.dcm_bn.values)
     cubesat_params = eval(sim_dataset.cubesat_parameters)
     new_data = sim_attitude(sim_params, cubesat_params, 'easter_egg', save=False, ret=True)
-    new_data['time'] = np.arange(len(sim_dataset.time), len(sim_dataset.time) + sim_params['end_time_index']*sim_params['save_every'], 1)
+    new_data['time'] = np.arange(len(sim_dataset.time), len(sim_dataset.time) + sim_params['duration']*sim_params['save_every'], 1)
     a = xr.concat([sim_dataset, new_data], dim='time')
     true_sim_params = eval(a.simulation_parameters)
-    true_sim_params['end_time_index'] = original_params['end_time_index'] + num_iter
+    true_sim_params['duration'] = original_params['duration'] + num_iter
     true_sim_params['final_time'] = eval(new_data.simulation_parameters)['final_time']
     a.attrs['simulation_parameters'] = str(true_sim_params)
     a.to_netcdf(os.path.join(os.path.dirname(__file__), f'../../{file_name}.nc'))
@@ -257,7 +257,7 @@ if __name__ == "__main__":
     sim_params = {
         'time_step': 0.01,
         'save_every': 10,
-        'end_time_index': 20,
+        'duration': 20,
         'start_time': '2019/03/24 18:35:01',
         'omega0_body': (np.pi / 180) * np.array([-2, 3, 3.5]),
         'sigma0': [0.6440095705520482, 0.39840861883760637, 0.18585931442943798]

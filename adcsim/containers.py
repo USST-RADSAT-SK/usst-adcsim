@@ -9,7 +9,7 @@ from adcsim.CubeSat_model import CubeSat
 
 class OrbitData:
     def __init__(self, sim_params: dict, saved_data: xr.Dataset):
-        num_simulation_data_points = int(sim_params['end_time_index'] // sim_params['time_step']) + 1
+        num_simulation_data_points = int(sim_params['duration'] // sim_params['time_step']) + 1
         start_time = datetime.strptime(sim_params['start_time'], "%Y/%m/%d %H:%M:%S")
         start_time = start_time.replace(tzinfo=utc)
         final_time = start_time + timedelta(seconds=sim_params['time_step']*num_simulation_data_points)
