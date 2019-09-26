@@ -148,22 +148,27 @@ class DisturbanceTorques(object):
         # (i.e. neglecting the affect of reemitted particles on the incident stream)
 
         vm = np.linalg.norm(v)
-        ev = v * (1.0 / vm)
 
-        # calculate net torque
-        net_torque = np.zeros(3)
-        for face in cubesat.faces:
-            mu = np.dot(ev, face.normal)  # cosine of angle between velocity and surface normal
-            if mu >= 0:
-                # units N, see eq'n 2-2 in NASA SP-8058 Spacecraft Aerodynamic Torques
-                force = -rho * vm**2 * (2 * (1-face.accommodation_coeff) * mu**2 * face.normal +
-                                        face.accommodation_coeff * mu * ev) * face.area  # units N, see eq'n 2-2 in NASA SP-8058 Spacecraft Aerodynamic Torques
-                # This addition is the diffuse term in Chris Robson's thesis. Just use 5 % of vm for now for the diffuse vel
-                # note: I think Chris is missing a second cosine in the specular reflection equation
-                force += face.accommodation_coeff * rho * vm * (0.05*vm) * face.area * mu * face.normal
-                net_torque += ut.cross_product_operator(face.centroid - cubesat.center_of_mass) @ force  # units N.m
+        if cubesat._aero_lut is None:
+            ev = v * (1.0 / vm)
 
-        return net_torque
+            # calculate net torque
+            net_torque = np.zeros(3)
+            for face in cubesat.faces:
+                mu = np.dot(ev, face.normal)  # cosine of angle between velocity and surface normal
+                if mu >= 0:
+                    # units N, see eq'n 2-2 in NASA SP-8058 Spacecraft Aerodynamic Torques
+                    force = -rho * vm**2 * (2 * (1-face.accommodation_coeff) * mu**2 * face.normal +
+                                            face.accommodation_coeff * mu * ev) * face.area  # units N, see eq'n 2-2 in NASA SP-8058 Spacecraft Aerodynamic Torques
+                    # This addition is the diffuse term in Chris Robson's thesis. Just use 5 % of vm for now for the diffuse vel
+                    # note: I think Chris is missing a second cosine in the specular reflection equation
+                    force += face.accommodation_coeff * rho * vm * (0.05*vm) * face.area * mu * face.normal
+                    net_torque += ut.cross_product_operator(face.centroid - cubesat.center_of_mass) @ force  # units N.m
+
+            return net_torque
+        else:
+            net_torque =  cubesat.aerodynamic_lookup(v) * rho * vm**2
+            return net_torque
 
 
     def solar_pressure(self, sun_vec, sun_vec_inertial, satellite_vec_inertial, cubesat: CubeSat):
@@ -174,29 +179,34 @@ class DisturbanceTorques(object):
         :param satellite_vec_inertial: satellite position vector in inertial frame
         :param cubesat: CubeSat model
         """
+        solar_distance_2 = np.linalg.norm(sun_vec_inertial - satellite_vec_inertial) ** 2
 
-        # calculate the solar irradiance using equation 3-53 in Chris Robson's thesis
-        const = self._a_solar_constant / (np.linalg.norm(sun_vec_inertial - satellite_vec_inertial)) ** 2
+        if cubesat._solar_lut is None:
+            # calculate the solar irradiance using equation 3-53 in Chris Robson's thesis
+            const = self._a_solar_constant / solar_distance_2
 
-        net_torque = np.zeros(3)
-        for face in cubesat.faces:
-            cos_theta = face.normal @ sun_vec
+            net_torque = np.zeros(3)
+            for face in cubesat.faces:
+                cos_theta = face.normal @ sun_vec
 
-            if cos_theta > 0:
-                # calculate the solar radiation pressure torque using the equation in SMAD
-                # net_torque += const * face.area * (1 + face.reflection_coeff) * cos_theta * \
-                #               (ut.cross_product_operator(face.centroid - cubesat.center_of_mass) @
-                #                -face.normal)  # force is opposite to area
+                if cos_theta > 0:
+                    # calculate the solar radiation pressure torque using the equation in SMAD
+                    # net_torque += const * face.area * (1 + face.reflection_coeff) * cos_theta * \
+                    #               (ut.cross_product_operator(face.centroid - cubesat.center_of_mass) @
+                    #                -face.normal)  # force is opposite to area
 
-                # Calculate the solar radiation pressure torque using equation 3.167 in Landis Markley's Fundamentals of
-                # Spacecraft Attitude Determination and Control textbook. This equation is equivalent to Chris Robson's
-                # equations 3-55 to 3-58. Note: I think Chris is missing a second cosine in the specular reflection equation
-                force = -const * face.area * cos_theta * \
-                        (2*(face.diff_ref_coeff/3 + face.spec_ref_coeff*cos_theta)*face.normal
-                         + (1 - face.spec_ref_coeff)*sun_vec)
-                net_torque += ut.cross_product_operator(face.centroid - cubesat.center_of_mass) @ force
+                    # Calculate the solar radiation pressure torque using equation 3.167 in Landis Markley's Fundamentals of
+                    # Spacecraft Attitude Determination and Control textbook. This equation is equivalent to Chris Robson's
+                    # equations 3-55 to 3-58. Note: I think Chris is missing a second cosine in the specular reflection equation
+                    force = -const * face.area * cos_theta * \
+                            (2*(face.diff_ref_coeff/3 + face.spec_ref_coeff*cos_theta)*face.normal
+                             + (1 - face.spec_ref_coeff)*sun_vec)
+                    net_torque += ut.cross_product_operator(face.centroid - cubesat.center_of_mass) @ force
 
-        return net_torque
+            return net_torque
+        else:
+            net_torque = cubesat.solar_lookup(sun_vec) / solar_distance_2
+            return net_torque
 
 
     # This function is here because it could go together with the solar pressure disturbance torque function.
@@ -209,16 +219,21 @@ class DisturbanceTorques(object):
         :param cubesat: CubeSat model
         :return: float. Current solar panel power output
         """
-        watt_per_meter = self._a_solar_constant_2 / (np.linalg.norm(sun_vec_inertial - satellite_vec_inertial)) ** 2
-        power = 0
+        solar_distance_2 = np.linalg.norm(sun_vec_inertial - satellite_vec_inertial) ** 2
+        if cubesat._power_lut is None:
+            watt_per_meter = self._a_solar_constant_2 / solar_distance_2
+            power = 0
 
-        for face in cubesat.solar_panel_faces:
-            cos_theta = face.normal @ sun_vec
+            for face in cubesat.solar_panel_faces:
+                cos_theta = face.normal @ sun_vec
 
-            if cos_theta > 0:
-                power += watt_per_meter * face.area * cos_theta * face.solar_power_efficiency
+                if cos_theta > 0:
+                    power += watt_per_meter * face.area * cos_theta * face.solar_power_efficiency
 
-        return power
+            return power
+        else:
+            power = cubesat.solar_lookup(sun_vec) / solar_distance_2
+            return power
 
 
     def total_magnetic(self, b, cubesat: CubeSat):

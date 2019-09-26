@@ -91,6 +91,12 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
 
     # initialize the disturbance torque object
     disturbance_torques = dt.DisturbanceTorques(**{torque: True for torque in sim_params['disturbance_torques']})
+    if 'aerodynamic' in sim_params['disturbance_torques']:
+        cubesat.create_aerodynamic_table(disturbance_torques.aerodynamic_torque, 101, 101)
+    if 'solar' in sim_params['disturbance_torques']:
+        cubesat.create_solar_table(disturbance_torques.solar_pressure, 101, 101)
+    if sim_params['calculate_power']:
+        cubesat.create_power_table(disturbance_torques.solar_panel_power, 101, 101)
     disturbance_torques.save_hysteresis = True
 
     # the integration
