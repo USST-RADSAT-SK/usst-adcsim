@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from typing import Union, List
 from adcsim.hysteresis_rod import HysteresisRod
+from scipy.interpolate import RegularGridInterpolator
 
 
 class Face2D:
@@ -451,6 +452,11 @@ class CubeSat(Polygons3D):
         self._magnetic_moment = magnetic_moment
         self._total_magnetic_moment = residual_magnetic_moment + magnetic_moment
         self._hyst_rods = [] if hyst_rods is None else hyst_rods
+
+        self._aero_lut = None  # lookup table for aerodynamic torque
+        self._solar_lut = None  # lookup table for solar torque
+        self._power_lut = None  # lookup table for solar power
+
         super().__init__(faces)
 
     @classmethod
@@ -510,4 +516,105 @@ class CubeSat(Polygons3D):
         d['faces'] = a
 
         return d
+
+    def create_aerodynamic_table(self, function, nmu, nphi):
+        """
+        Creates a lookup table for aerodynamic torque
+        :param function: Function that calculates aerodynamic torque. Should take the following arguments:
+          v: vector containing velocity with respect to air in m/s
+          rho: air density in kg/m^3
+          cubesat: CubeSat model
+        :param nmu: Number of data points in the zenith direction.
+        :param nphi: Number of data points in the azimuth direction.
+        :return:
+        """
+        mu = np.linspace(-1., 1., nmu)
+        nu = np.sqrt(1.0 - mu**2)
+        phi = np.linspace(-np.pi, np.pi, nphi)
+        cosphi = np.cos(phi)
+        sinphi = np.sin(phi)
+        table = np.zeros((nmu, nphi, 3))
+
+        for i in range(nmu):
+            for j in range(nphi):
+                ev = np.array([nu[i] * cosphi[j], nu[i] * sinphi[j], mu[i]])
+                table[i, j] = function(ev, 1.0, self)
+
+        self._aero_lut = RegularGridInterpolator((mu, phi), table)
+
+    def aerodynamic_lookup(self, v: np.ndarray):
+        mu = v[2] / np.linalg.norm(v)
+        phi = np.arctan2(v[1], v[0])
+        return self._aero_lut((mu, phi))
+
+    def create_solar_table(self, function, nmu, nphi):
+        """
+        Creates a lookup table for aerodynamic torque
+        :param function: Function that calculates aerodynamic torque. Should take the following arguments:
+          sun_vec: Unit vector pointing at the sun in the body frame
+          sun_vec_inertial: sun position in inertial frame
+          satellite_vec_inertial: satellite position in inertial frame
+          cubesat: CubeSat model
+        :param nmu: Number of data points in the zenith direction.
+        :param nphi: Number of data points in the azimuth direction.
+        :return:
+        """
+        mu = np.linspace(-1., 1., nmu)
+        nu = np.sqrt(1.0 - mu**2)
+        phi = np.linspace(-np.pi, np.pi, nphi)
+        cosphi = np.cos(phi)
+        sinphi = np.sin(phi)
+        table = np.zeros((nmu, nphi, 3))
+
+        # these parameters just determine satellite-sun distance, which should
+        # be applied after the lookup table, so these parameters just make it 1
+        sun_vec_inertial = np.array([1., 0., 0.])
+        satellite_vec_inertial = np.array([0., 0., 0.])
+        for i in range(nmu):
+            for j in range(nphi):
+                ev = np.array([nu[i] * cosphi[j], nu[i] * sinphi[j], mu[i]])
+                table[i, j] = function(ev, sun_vec_inertial, satellite_vec_inertial, self)
+
+        self._solar_lut = RegularGridInterpolator((mu, phi), table)
+
+    def solar_lookup(self, v: np.ndarray):
+        mu = v[2] / np.linalg.norm(v)
+        phi = np.arctan2(v[1], v[0])
+        return self._solar_lut((mu, phi))
+
+    def create_power_table(self, function, nmu, nphi):
+        """
+        Creates a lookup table for aerodynamic torque
+        :param function: Function that calculates aerodynamic torque. Should take the following arguments:
+          sun_vec: Unit vector pointing at the sun in the body frame
+          sun_vec_inertial: sun position in inertial frame
+          satellite_vec_inertial: satellite position in inertial frame
+          cubesat: CubeSat model
+        :param nmu: Number of data points in the zenith direction.
+        :param nphi: Number of data points in the azimuth direction.
+        :return:
+        """
+        mu = np.linspace(-1., 1., nmu)
+        nu = np.sqrt(1.0 - mu**2)
+        phi = np.linspace(-np.pi, np.pi, nphi)
+        cosphi = np.cos(phi)
+        sinphi = np.sin(phi)
+        table = np.zeros((nmu, nphi))
+
+        # these parameters just determine satellite-sun distance, which should
+        # be applied after the lookup table, so these parameters just make it 1
+        sun_vec_inertial = np.array([1., 0., 0.])
+        satellite_vec_inertial = np.array([0., 0., 0.])
+        for i in range(nmu):
+            for j in range(nphi):
+                ev = np.array([nu[i] * cosphi[j], nu[i] * sinphi[j], mu[i]])
+                table[i, j] = function(ev, sun_vec_inertial, satellite_vec_inertial, self)
+
+        self._power_lut = RegularGridInterpolator((mu, phi), table)
+
+    def power_lookup(self, v: np.ndarray):
+        mu = v[2] / np.linalg.norm(v)
+        phi = np.arctan2(v[1], v[0])
+        power = self._power_lut((mu, phi))
+        return power
 
