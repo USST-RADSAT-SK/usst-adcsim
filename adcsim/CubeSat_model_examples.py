@@ -82,7 +82,9 @@ class CubeSatSolarPressureEx1(CubeSat):
 
 
 class CubeSatModel(CubeSat):
-    def __init__(self, center_of_mass: np.ndarray=np.zeros(3), inertia: np.ndarray=np.diag([2e-3, 2e-3, 8e-3]), residual_magnetic_moment: np.ndarray = np.zeros(3), magnetic_moment: np.ndarray = np.zeros(3), hyst_rods: List[HysteresisRod] = None):
+    def __init__(self, center_of_mass: np.ndarray=np.zeros(3), inertia: np.ndarray=np.diag([2e-3, 2e-3, 8e-3]),
+                 residual_magnetic_moment: np.ndarray = np.zeros(3), magnetic_moment: np.ndarray = np.zeros(3),
+                 hyst_rods: List[HysteresisRod] = None):
         solar_panel_up = Face2D(np.array([[-0.04, -0.022], [0.04, -0.022], [0.04, 0.008], [0.026, 0.022], [-0.026, 0.022], [-0.04, 0.008], [-0.04, -0.022]]).T, diff_ref_coeff=0.0, spec_ref_coeff=0.6, solar_power_efficiency=0.3)
         solar_panel_dn = Face2D(np.array([[-0.04, 0.022], [0.04, 0.022], [0.04, -0.008], [0.026, -0.022], [-0.026, -0.022], [-0.04, -0.008], [-0.04, 0.022]]).T[:, ::-1], diff_ref_coeff=0.0, spec_ref_coeff=0.6, solar_power_efficiency=0.3)
 
