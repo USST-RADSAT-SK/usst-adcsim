@@ -73,10 +73,8 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
     attitude.interp_orbit_data(orbit, 0.0)
     sun_vec[0], mag_field[0], density[0], lons[0], lats[0], alts[0], positions[0], velocities[0] = attitude.temp.sun_vec, attitude.temp.mag_field, attitude.temp.density, attitude.temp.lons, attitude.temp.lats, attitude.temp.alts, attitude.temp.positions, attitude.temp.velocities
     sigma0 = np.array(sim_params['sigma0'])
-    dcm0 = tr.mrp_to_dcm(sigma0)
     omega0_body = np.array(sim_params['omega0_body'])
-    omega0 = dcm0.T @ omega0_body
-    states[0] = state = [sigma0, omega0]
+    states[0] = state = [sigma0, omega0_body]
     dcm_bn[0] = tr.mrp_to_dcm(states[0][0])
     dcm_on[0] = ut.inertial_to_orbit_frame(positions[0], velocities[0])
     dcm_bo[0] = dcm_bn[0] @ dcm_on[0].T
@@ -255,12 +253,14 @@ if __name__ == "__main__":
     from adcsim.hysteresis_rod import HysteresisRod
     from adcsim.CubeSat_model_examples import CubeSatModel
     sim_params = {
-        'time_step': 0.01,
-        'save_every': 10,
-        'duration': 20,
+        'time_step': 0.2,
+        'save_every': 1,
+        'duration': 10000,
         'start_time': '2019/03/24 18:35:01',
         'omega0_body': (np.pi / 180) * np.array([-2, 3, 3.5]),
-        'sigma0': [0.6440095705520482, 0.39840861883760637, 0.18585931442943798]
+        'sigma0': [0.6440095705520482, 0.39840861883760637, 0.18585931442943798],
+        'disturbance_torques': ['gravity', 'magnetic', 'hysteresis', 'aerodynamic', 'solar'],
+        'calculate_power': False
     }
     # create inital cubesat parameters dict (the raw data is way to large to do manually like above)
     rod1 = HysteresisRod(br=0.35, bs=0.73, hc=1.59, volume=0.075 / (100 ** 3), axes_alignment=np.array([1.0, 0, 0]))
@@ -270,7 +270,7 @@ if __name__ == "__main__":
                            hyst_rods=[rod1, rod2])
     cubesat_params = cubesat.asdict()
 
-    data = sim_attitude(sim_params, cubesat_params, 'test0', save=True, ret=True)
+    data = sim_attitude(sim_params, cubesat_params, 'sim1', save=True, ret=True)
 
     # run the simulation longer
-    continue_sim(data, 30, 'test1')
+    # continue_sim(data, 30, 'test1')
