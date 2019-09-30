@@ -9,18 +9,28 @@ from adcsim.CubeSat_model import CubeSat
 
 class OrbitData:
     def __init__(self, sim_params: dict, saved_data: xr.Dataset):
-        num_simulation_data_points = int(sim_params['duration'] // sim_params['time_step']) + 1
-        start_time = datetime.strptime(sim_params['start_time'], "%Y/%m/%d %H:%M:%S")
-        start_time = start_time.replace(tzinfo=utc)
-        final_time = start_time + timedelta(seconds=sim_params['time_step']*num_simulation_data_points)
-        orbit_data = saved_data.sel(time=slice(None, final_time))
-        num_saved_data_points = len(orbit_data.time)
-        a = num_saved_data_points
+        start_time = np.datetime64(sim_params['start_time'].replace('/', '-').replace(' ', 'T'))
+        final_time = start_time + np.timedelta64(round(sim_params['duration'] * 1e9), 'ns')
+        if start_time == saved_data.time.values[0]:
+            start_index = 0
+        else:
+            start_index = np.where(saved_data.time.values < start_time)
+            if len(start_index[0]) > 0:
+                start_index = start_index[0][-1]
+            else:
+                raise ValueError('Simulation start time preceeds orbit start time')
+        final_index = np.where(saved_data.time.values > final_time)
+        if len(final_index[0]) > 0:
+            final_index = final_index[0][0] + 1
+        else:
+            raise ValueError('Simulation final time exceeds orbit final time')
+        orbit_data = saved_data.isel(time=slice(start_index, final_index))
         t = orbit_data.time.values.astype('float')
         t = (t - t[0]) * 1e-9
-        ab = np.concatenate((orbit_data.sun.values, orbit_data.mag.values, orbit_data.atmos.values.reshape(a, 1),
-                             orbit_data.lons.values.reshape(a, 1), orbit_data.lats.values.reshape(a, 1),
-                             orbit_data.alts.values.reshape(a, 1), orbit_data.positions.values, orbit_data.velocities.values),
+        ab = np.concatenate((orbit_data.sun.values, orbit_data.mag.values, orbit_data.atmos.values.reshape(-1, 1),
+                             orbit_data.lons.values.reshape(-1, 1), orbit_data.lats.values.reshape(-1, 1),
+                             orbit_data.alts.values.reshape(-1, 1), orbit_data.positions.values,
+                             orbit_data.velocities.values),
                             axis=1)
         self._interp_data = interp1d(t, ab.T)
 

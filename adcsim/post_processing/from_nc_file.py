@@ -10,7 +10,7 @@ from adcsim.hysteresis_rod import HysteresisRod
 from adcsim.animation import AnimateAttitude, DrawingVectors, AdditionalPlots
 import os
 ####################################
-in_file = '../../run1.nc'  # name and location of input .nc file; default is '../../run0.c'
+in_file = '../../sim1.nc'  # name and location of input .nc file; default is '../../run0.c'
 save_graphs = False  # change to true if you want to save copies of various graphs; default False
 output_folder = '../../'  # change to save graphs to another folder; default is adcsim folder: '../../'
                           # 'output_folder = '../../from_nc_graphs/' is an example
@@ -24,7 +24,7 @@ data = xr.open_dataset(os.path.join(os.path.dirname(__file__), in_file))
 sim_params = eval(data.simulation_parameters)
 more_params = eval(data.cubesat_parameters)
 time = np.arange(0, sim_params['duration'], sim_params['time_step'])
-le = int(len(time)/sim_params['save_every'])
+le = (len(time) - 1) // sim_params['save_every'] + 1
 time = time[::sim_params['save_every']]
 
 if save_graphs:
