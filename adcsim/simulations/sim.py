@@ -93,8 +93,10 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
         cubesat.create_power_table(disturbance_torques.solar_panel_power, 101, 101)
     disturbance_torques.save_hysteresis = True
 
-    # the integration
-    k = 0
+    # TODO: set initial disturbance torques
+
+    # Integration for the remaining steps
+    k = 1
     for i in tqdm(range(len(time) - 1)):
         # propagate attitude state
         disturbance_torques.propagate_hysteresis = True  # should propagate the hysteresis history, bringing it up to the current position
@@ -105,7 +107,6 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
         # do 'tidy' up things at the end of integration (needed for many types of attitude coordinates)
         state = ic.mrp_switching(state)
         if not (i + 1) % save_every:
-            k += 1
             states[k] = state
             dcm_bn[k] = attitude.save.dcm_bn
             dcm_on[k] = attitude.save.dcm_on
@@ -132,6 +133,7 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
             disturbance_torques.save_hysteresis = True
             if k >= le - 1:
                 break
+            k += 1
 
     for i, rod in enumerate(cubesat.hyst_rods):
         b_rods[:, i] = rod.b
