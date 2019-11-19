@@ -615,6 +615,5 @@ class CubeSat(Polygons3D):
     def power_lookup(self, v: np.ndarray):
         mu = v[2] / np.linalg.norm(v)
         phi = np.arctan2(v[1], v[0])
-        power = self._power_lut((mu, phi))
-        return power
+        return self._power_lut((mu, phi))
 
