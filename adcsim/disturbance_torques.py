@@ -32,9 +32,10 @@ class DisturbanceTorques(object):
     _u0 = 4 * np.pi * 10**-7
     # Note: it appears that ut.cross_product_operator is a significant amount faster than using np.cross()
 
-    def __init__(self, gravity=False, aerodynamic=False, solar=False, magnetic=False, hysteresis=False):
+    def __init__(self, gravity=False, aerodynamic=False, solar=False, magnetic=False, hysteresis=False, power=False):
         self._include_torques = dict(gravity=gravity, aerodynamic=aerodynamic, solar=solar, magnetic=magnetic, hysteresis=hysteresis)
         self._previous_torques = {key: np.zeros(3) for key in self._include_torques}
+        self._include_power = power
         self.propagate_hysteresis = False
         self.save_hysteresis = False
         self.save_torques = False
@@ -82,16 +83,17 @@ class DisturbanceTorques(object):
             vel_body = c.dcm_bn @ self.get_air_velocity(c.velocities, c.positions)
             c.aerod = self.aerodynamic_torque(vel_body, c.density, cubesat)
             c.controls += c.aerod
-        if self._include_torques['solar']:
+        if self._include_power or self._include_torques['solar']:
             sun_vec_norm = c.sun_vec / np.linalg.norm(c.sun_vec)
-            c.sun_vec_body = c.dcm_bn @ sun_vec_norm
             theta = np.arcsin(6.378e6 / (6.378e6 + c.alts))
             angle_btw = np.arccos(c.nadir @ sun_vec_norm)
             if angle_btw < theta:
                 c.is_eclipse = 1
-            else:
-                c.solard = self.solar_pressure(c.sun_vec_body, c.sun_vec, c.positions, cubesat)
-                c.controls += c.solard
+            if self._include_torques['solar']:
+                c.sun_vec_body = c.dcm_bn @ sun_vec_norm
+                if not c.is_eclipse:
+                    c.solard = self.solar_pressure(c.sun_vec_body, c.sun_vec, c.positions, cubesat)
+                    c.controls += c.solard
         if self._include_torques['magnetic']:
             c.magneticd = self.total_magnetic(c.mag_field_body, cubesat)
             c.controls += c.magneticd
@@ -232,7 +234,7 @@ class DisturbanceTorques(object):
 
             return power
         else:
-            power = cubesat.solar_lookup(sun_vec) / solar_distance_2
+            power = cubesat.power_lookup(sun_vec) / solar_distance_2
             return power
 
 

@@ -84,7 +84,7 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
         rod.b[0] = rod.b_current = rod.b_field_bottom(rod.h_current)
 
     # initialize the disturbance torque object
-    disturbance_torques = dt.DisturbanceTorques(**{torque: True for torque in sim_params['disturbance_torques']})
+    disturbance_torques = dt.DisturbanceTorques(*([True for _ in range(len(sim_params['disturbance_torques']))] + [sim_params['calculate_power']]))
     if 'aerodynamic' in sim_params['disturbance_torques']:
         cubesat.create_aerodynamic_table(disturbance_torques.aerodynamic_torque, 101, 101)
     if 'solar' in sim_params['disturbance_torques']:
@@ -126,7 +126,10 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
             density[k] = attitude.save.density
             mag_field[k] = attitude.save.mag_field
             mag_field_body[k] = attitude.save.mag_field_body
-            solar_power[k] = attitude.save.solar_power
+            if not attitude.save.is_eclipse:
+                solar_power[k] = disturbance_torques.solar_panel_power(attitude.save.sun_vec_body,
+                                                                       attitude.save.sun_vec,
+                                                                       attitude.save.positions, cubesat)
             is_eclipse[k] = attitude.save.is_eclipse
             hyst_rod[k] = attitude.save.hyst_rod
             disturbance_torques.save_hysteresis = True
@@ -165,7 +168,8 @@ def sim_attitude(sim_params, cubesat_params, file_name, save=True, ret=False):
                     'hyst_rod_magnetization': (['time', 'hyst_rod'], b_rods),
                     'hyst_rod_external_field': (['time', 'hyst_rod'], h_rods),
                     'nadir': (['time', 'cord'], nadir),
-                    'solar_power': ('time', solar_power)},
+                    'solar_power': ('time', solar_power),
+                    'is_eclipse': ('time', is_eclipse)},
                    coords={'time': np.arange(0, le, 1), 'cord': ['x', 'y', 'z'], 'hyst_rod': [f'rod{i}' for i in range(len(cubesat.hyst_rods))]},
                    attrs={'simulation_parameters': str(sim_params_dict), 'cubesat_parameters': str(cubesat.asdict()),
                           'description': 'University of kentucky attitude propagator software '
@@ -207,12 +211,12 @@ if __name__ == "__main__":
     sim_params = {
         'time_step': 0.2,
         'save_every': 1,
-        'duration': 10e3,
+        'duration': 3000,
         'start_time': '2019/03/24 18:35:01',
         'omega0_body': (np.pi / 180) * np.array([-2, 3, 3.5]),
         'sigma0': [0.6440095705520482, 0.39840861883760637, 0.18585931442943798],
         'disturbance_torques': ['gravity', 'magnetic', 'hysteresis', 'aerodynamic', 'solar'],
-        'calculate_power': False
+        'calculate_power': True
     }
 
     # create inital cubesat parameters dict (the raw data is way to large to do manually like above)
